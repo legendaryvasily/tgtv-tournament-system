@@ -115,12 +115,21 @@ async function updateUser({ client, user, params, body }) {
 
   // D2 fix: server.js:1958 wrote isAdmin before rejecting self-demotion, dropping
   // a bundled rating change. Validate the whole patch before writing anything.
-  let rating = null;
-  if (body.rating !== undefined) {
-    rating = requireInteger(body.rating, {
+  let ratingTts = null;
+  const requestedTtsRating = body.ratingTts ?? body.rating;
+  if (requestedTtsRating !== undefined) {
+    ratingTts = requireInteger(requestedTtsRating, {
       min: 0,
       max: 5000,
-      message: "Rating must be an integer between 0 and 5000"
+      message: "TTS rating must be an integer between 0 and 5000"
+    });
+  }
+  let ratingIrl = null;
+  if (body.ratingIrl !== undefined) {
+    ratingIrl = requireInteger(body.ratingIrl, {
+      min: 0,
+      max: 5000,
+      message: "IRL rating must be an integer between 0 and 5000"
     });
   }
 
@@ -133,7 +142,8 @@ async function updateUser({ client, user, params, body }) {
   }
 
   let updated = target;
-  if (rating !== null) updated = await usersRepo.setRating(client, target.id, rating);
+  if (ratingTts !== null) updated = await usersRepo.setRating(client, target.id, ratingTts, "tts");
+  if (ratingIrl !== null) updated = await usersRepo.setRating(client, target.id, ratingIrl, "irl");
   if (isAdmin !== null) updated = await usersRepo.setAdmin(client, target.id, isAdmin);
 
   return { user: publicUser(updated) };

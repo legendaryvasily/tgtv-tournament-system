@@ -2839,6 +2839,44 @@ tr:last-child td {
   }
 }
 
+.venue-tabs {
+  max-width: 520px;
+  margin-bottom: 12px;
+}
+
+.secondary-rating {
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+}
+
+.profile-ratings {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 22px;
+}
+
+@media (max-width: 720px) {
+  .topbar-name-row,
+  .profile-ratings {
+    flex-wrap: wrap;
+  }
+
+  .profile-ratings {
+    justify-content: flex-start;
+  }
+
+  .profile-rating {
+    min-width: 96px;
+    justify-items: start;
+  }
+
+  .profile-rating span {
+    font-size: 34px;
+  }
+}
+
 
 /* Keep the fixed theme control clear of the duplicated legacy topbar rules above. */
 .topbar {

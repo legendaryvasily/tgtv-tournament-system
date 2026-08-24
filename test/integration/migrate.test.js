@@ -161,6 +161,8 @@ test("схема users содержит ожидаемые колонки", asyn
     "name_key",
     "password_hash",
     "rating",
+    "rating_irl",
+    "rating_tts",
     "register_nickname",
     "telegram_contact",
     "updated_at"

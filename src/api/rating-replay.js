@@ -10,12 +10,29 @@ function eloDeltaFor(game, userId) {
   return Number(game.elo?.[userId]?.delta || 0);
 }
 
-function inferBaseRatings(users, games) {
-  const ratings = new Map(users.map((user) => [user.id, Number(user.rating || 0)]));
+function inferBaseRatings(users, games, { splitFromLegacyRating = false } = {}) {
+  const ratings = {
+    tts: new Map(),
+    irl: new Map()
+  };
+  for (const user of users) {
+    if (splitFromLegacyRating) {
+      ratings.tts.set(user.id, Number(user.rating || 0));
+      ratings.irl.set(user.id, Number(user.rating || 0));
+    } else {
+      ratings.tts.set(user.id, usersRepo.ratingForVenue(user, "tts"));
+      ratings.irl.set(user.id, usersRepo.ratingForVenue(user, "irl"));
+    }
+  }
   for (const game of games) {
+    const venue = splitFromLegacyRating ? null : usersRepo.normalizeVenueMode(game.venueMode);
     for (const userId of game.playerIds || []) {
-      if (!ratings.has(userId)) continue;
-      ratings.set(userId, ratings.get(userId) - eloDeltaFor(game, userId));
+      const delta = eloDeltaFor(game, userId);
+      const tracks = venue ? [ratings[venue]] : [ratings.tts, ratings.irl];
+      for (const track of tracks) {
+        if (!track.has(userId)) continue;
+        track.set(userId, track.get(userId) - delta);
+      }
     }
   }
   return ratings;
@@ -71,7 +88,7 @@ function ratingReplayOrder(a, b) {
   return String(a.id).localeCompare(String(b.id));
 }
 
-async function recalculateCompletedGameRatings(client) {
+async function recalculateCompletedGameRatings(client, options = {}) {
   const users = await usersRepo.listForRatingReplay(client);
   const games = await gamesRepo.listCompletedForRatingReplay(client);
   const replayGames = games.sort(ratingReplayOrder);
@@ -79,17 +96,25 @@ async function recalculateCompletedGameRatings(client) {
     .filter((game) => game.sourceType === "tournament_match")
     .map((game) => game.id);
   const tournamentPolicies = await tournamentMatchesRepo.ratingPoliciesByGameIds(client, tournamentGameIds);
-  const ratings = inferBaseRatings(users, replayGames);
+  const ratings = inferBaseRatings(users, replayGames, options);
 
   for (const game of replayGames) {
-    const elo = isRankedGame(game, tournamentPolicies) ? replayGame(game, ratings) : null;
+    const venue = usersRepo.normalizeVenueMode(game.venueMode);
+    const elo = isRankedGame(game, tournamentPolicies) ? replayGame(game, ratings[venue]) : null;
     await gamesRepo.updateElo(client, game.id, elo);
   }
 
   for (const user of users) {
-    const rating = ratings.get(user.id);
-    if (Number.isInteger(rating) && rating !== user.rating) {
-      await usersRepo.setRating(client, user.id, rating);
+    const next = {
+      tts: ratings.tts.get(user.id),
+      irl: ratings.irl.get(user.id)
+    };
+    if (
+      Number.isInteger(next.tts) &&
+      Number.isInteger(next.irl) &&
+      (next.tts !== usersRepo.ratingForVenue(user, "tts") || next.irl !== usersRepo.ratingForVenue(user, "irl"))
+    ) {
+      await usersRepo.setRatings(client, user.id, next);
     }
   }
 

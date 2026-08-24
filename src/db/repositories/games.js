@@ -17,20 +17,25 @@ async function lockById(client, id) {
   return mapGame(rows[0]);
 }
 
-async function listCompleted(client) {
+async function listCompleted(client, venueMode = null) {
+  const venue = ["tts", "irl"].includes(venueMode) ? venueMode : null;
   const { rows } = await client.query(
-    `SELECT ${COLUMNS} FROM games WHERE status = 'completed'
-     ORDER BY COALESCE(submitted_at, created_at) DESC, id DESC`
+    `SELECT ${COLUMNS} FROM games
+     WHERE status = 'completed' AND ($1::text IS NULL OR venue_mode = $1)
+     ORDER BY COALESCE(submitted_at, created_at) DESC, id DESC`,
+    [venue]
   );
   return rows.map(mapGame);
 }
 
-async function listCompletedForUser(client, userId) {
+async function listCompletedForUser(client, userId, venueMode = null) {
+  const venue = ["tts", "irl"].includes(venueMode) ? venueMode : null;
   const { rows } = await client.query(
     `SELECT ${COLUMNS} FROM games
      WHERE status = 'completed' AND $1 = ANY(player_ids)
+       AND ($2::text IS NULL OR venue_mode = $2)
      ORDER BY COALESCE(submitted_at, created_at) DESC, id DESC`,
-    [userId]
+    [userId, venue]
   );
   return rows.map(mapGame);
 }
@@ -87,12 +92,13 @@ async function findActiveBetween(client, userId, otherUserId) {
 
 async function insert(
   client,
-  { challengeId, playerIds, sourceType = "challenge", sourceId = null, participants = null }
+  { challengeId, playerIds, sourceType = "challenge", sourceId = null, venueMode = "tts", participants = null }
 ) {
+  const venue = venueMode === "irl" ? "irl" : "tts";
   const { rows } = await client.query(
-    `INSERT INTO games (challenge_id, player_ids, status, source_type, source_id)
-     VALUES ($1, $2, 'open', $3, $4) RETURNING ${COLUMNS}`,
-    [challengeId || null, playerIds, sourceType, sourceId]
+    `INSERT INTO games (challenge_id, player_ids, status, source_type, source_id, venue_mode)
+     VALUES ($1, $2, 'open', $3, $4, $5) RETURNING ${COLUMNS}`,
+    [challengeId || null, playerIds, sourceType, sourceId, venue]
   );
   const game = mapGame(rows[0]);
   if (Array.isArray(participants) && participants.length) {

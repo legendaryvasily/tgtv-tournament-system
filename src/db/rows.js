@@ -1,6 +1,7 @@
 const USER_COLUMNS = `
   id, name, name_key, password_hash, avatar_data, register_nickname,
-  telegram_contact, challenge_credits, rating, is_admin, created_at, updated_at
+  telegram_contact, challenge_credits, rating, rating_tts, rating_irl,
+  is_admin, created_at, updated_at
 `;
 
 const CHALLENGE_COLUMNS = `
@@ -9,7 +10,7 @@ const CHALLENGE_COLUMNS = `
 
 const GAME_COLUMNS = `
   id, challenge_id, player_ids, status, created_at,
-  submitted_by, submitted_at, pending_result, result, elo, source_type, source_id
+  submitted_by, submitted_at, pending_result, result, elo, source_type, source_id, venue_mode
 `;
 
 const FEEDBACK_COLUMNS = `
@@ -83,7 +84,11 @@ function mapUser(row) {
     registerNickname: row.register_nickname || "",
     telegramContact: row.telegram_contact || "",
     challengeCredits: Array.isArray(row.challenge_credits) ? row.challenge_credits : [],
-    rating: row.rating,
+    rating: row.rating_tts ?? row.rating,
+    ratings: {
+      tts: row.rating_tts ?? row.rating,
+      irl: row.rating_irl ?? row.rating
+    },
     isAdmin: row.is_admin,
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at)
@@ -118,7 +123,8 @@ function mapGame(row) {
     result: row.result,
     elo: row.elo,
     sourceType: row.source_type || "challenge",
-    sourceId: row.source_id || null
+    sourceId: row.source_id || null,
+    venueMode: row.venue_mode || "tts"
   };
 }
 

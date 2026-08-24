@@ -17,12 +17,14 @@ const state = {
   challengeOpenedFromProfile: false,
   challengeTab: "classified",
   statisticsTab: "killTeamWinrates",
+  statisticsVenue: "tts",
   selectedStatisticsTeam: null,
   selectedSeasonId: "2026-q2-dataslate",
   statisticsFilters: { classification: "all", team: "" },
   statisticsSort: { key: "winRate", dir: "desc" },
   gameFilters: { playerQuery: "", playerId: "", team: "" },
   leaderboardTab: "leaderboard",
+  leaderboardVenue: "tts",
   leaderboardPage: 1,
   adminUsersPage: 1,
   gamesTab: "history",
@@ -620,7 +622,11 @@ function appRouteFromHash() {
   const [section, subroute, id] = segments;
   if (section === "matchmaking" || section === "play") return { view: "play" };
   if (section === "leaderboard" || section === "top") {
-    return { view: "top", leaderboardTab: subroute === "users" ? "users" : "leaderboard" };
+    return {
+      view: "top",
+      leaderboardTab: subroute === "users" ? "users" : "leaderboard",
+      leaderboardVenue: subroute === "irl" ? "irl" : "tts"
+    };
   }
   if (section === "games") {
     if (subroute === "game") return { view: "gameDetail", selectedGameId: Number(id) };
@@ -644,7 +650,9 @@ function appRouteFromHash() {
     }
     return { view: "tournaments", tournamentsTab: "public" };
   }
-  if (section === "stats" || section === "statistics") return { view: "statistics" };
+  if (section === "stats" || section === "statistics") {
+    return { view: "statistics", statisticsVenue: subroute === "irl" ? "irl" : "tts" };
+  }
   if (section === "profile") return { view: "profile" };
   if (section === "players") return { view: "player", selectedPlayerId: Number(subroute) };
   if (section === "challenge") return { view: "challenge" };
@@ -680,6 +688,7 @@ async function applyAppRoute(route) {
   if (route.view === "feedback") state.feedbackMode = "form";
   if (route.view === "top") {
     state.leaderboardTab = state.me?.isAdmin ? route.leaderboardTab || "leaderboard" : "leaderboard";
+    state.leaderboardVenue = route.leaderboardVenue || "tts";
     if (state.leaderboardTab === "users") await loadAdminUsers();
     else await loadTop();
   } else if (route.view === "games") {
@@ -710,6 +719,7 @@ async function applyAppRoute(route) {
       await loadTournaments();
     }
   } else if (route.view === "statistics") {
+    state.statisticsVenue = route.statisticsVenue || "tts";
     await loadGames();
   } else if (route.view === "profile") {
     await loadChallengeProgress(state.me.id);
@@ -729,7 +739,10 @@ async function applyAppRoute(route) {
 
 function appHashForState() {
   if (state.view === "play") return "#/matchmaking";
-  if (state.view === "top") return state.leaderboardTab === "users" ? "#/leaderboard/users" : "#/leaderboard";
+  if (state.view === "top") {
+    if (state.leaderboardTab === "users") return "#/leaderboard/users";
+    return state.leaderboardVenue === "irl" ? "#/leaderboard/irl" : "#/leaderboard";
+  }
   if (state.view === "games") return state.gamesTab === "sessions" ? "#/games/sessions" : "#/games";
   if (state.view === "gameDetail" && state.selectedGameId) {
     const tournamentMatchId = tournamentMatchIdFromGameId(state.selectedGameId);
@@ -745,7 +758,7 @@ function appHashForState() {
     }
     return "#/tournaments";
   }
-  if (state.view === "statistics") return "#/stats";
+  if (state.view === "statistics") return state.statisticsVenue === "irl" ? "#/stats/irl" : "#/stats";
   if (state.view === "profile") return "#/profile";
   if (state.view === "player" && state.playerProfile?.user?.id) return `#/players/${encodeURIComponent(state.playerProfile.user.id)}`;
   if (state.view === "challenge") return "#/challenge";
@@ -1419,6 +1432,33 @@ function pageTabs(section, tabs, active) {
   `;
 }
 
+function venueTabs(scope, activeVenue) {
+  return `
+    <div class="tabs page-tabs venue-tabs" aria-label="Game venue">
+      <button class="tab ${activeVenue === "irl" ? "active" : ""}" data-venue-tab="${scope}" data-venue="irl">In Real Life</button>
+      <button class="tab ${activeVenue === "tts" ? "active" : ""}" data-venue-tab="${scope}" data-venue="tts">TTS</button>
+    </div>
+  `;
+}
+
+function wireVenueTabs() {
+  document.querySelectorAll("[data-venue-tab]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const venue = button.dataset.venue === "irl" ? "irl" : "tts";
+      if (button.dataset.venueTab === "leaderboard") {
+        state.leaderboardVenue = venue;
+        state.leaderboardPage = 1;
+        await loadTop();
+      } else {
+        state.statisticsVenue = venue;
+        state.selectedStatisticsTeam = null;
+      }
+      syncAppHash();
+      renderShell();
+    });
+  });
+}
+
 function wirePageTabs() {
   document.querySelectorAll("[data-page-tab]").forEach((button) => {
     button.addEventListener("click", async () => {
@@ -1765,7 +1805,8 @@ function renderShell() {
         <div class="topbar-player">
           <div class="topbar-name-row">
             <h1>${escapeHtml(state.me.name)}</h1>
-            <span class="rating-pill inline-rating">${state.me.rating} Elo</span>
+            <span class="rating-pill inline-rating">TTS ${playerRating(state.me, "tts")}</span>
+            <span class="rating-pill inline-rating secondary-rating">IRL ${playerRating(state.me, "irl")}</span>
           </div>
         </div>
       </div>
@@ -2264,6 +2305,19 @@ function getProfileStats() {
   return { completedGames, openGames, pendingIncoming, pendingOutgoing, wins, draws, losses, eloDelta, winRate };
 }
 
+function playerRating(user, venueMode) {
+  return Number(user?.ratings?.[venueMode] ?? user?.rating ?? 1000);
+}
+
+function profileRatingsMarkup(user) {
+  return `
+    <div class="profile-ratings">
+      <div class="profile-rating"><span>${playerRating(user, "tts")}</span><small>TTS Elo</small></div>
+      <div class="profile-rating"><span>${playerRating(user, "irl")}</span><small>IRL Elo</small></div>
+    </div>
+  `;
+}
+
 function renderProfile() {
   const content = document.querySelector("[data-content]");
   const stats = getProfileStats();
@@ -2279,10 +2333,7 @@ function renderProfile() {
         <p class="muted">${state.me.isAdmin ? "Administrator" : "Player"} &middot; joined ${fmtDate(state.me.createdAt)}</p>
         ${profileInfoMarkup(state.me)}
       </div>
-      <div class="profile-rating">
-        <span>${state.me.rating}</span>
-        <small>Elo</small>
-      </div>
+      ${profileRatingsMarkup(state.me)}
     </section>
 
     <section class="profile-grid">
@@ -2528,10 +2579,7 @@ function renderPlayerProfile() {
         <p class="muted">Player &middot; joined ${fmtDate(user.createdAt)}</p>
         ${profileInfoMarkup(user)}
       </div>
-      <div class="profile-rating">
-        <span>${user.rating}</span>
-        <small>Elo</small>
-      </div>
+      ${profileRatingsMarkup(user)}
     </section>
 
     <section class="profile-grid">
@@ -3171,7 +3219,7 @@ function chooseGamePlayerSuggestion(button) {
 
 function renderStatistics() {
   const content = document.querySelector("[data-content]");
-  const games = state.allGames || [];
+  const games = (state.allGames || []).filter((game) => game.venueMode === state.statisticsVenue);
   const season = activeSeason();
   const seasonGames = filterGamesBySeason(games, season);
   const showSeasonSelector = ["killTeamWinrates", "teams"].includes(state.statisticsTab);
@@ -3184,11 +3232,12 @@ function renderStatistics() {
       ? renderTacOpWinrates(tacOpWinrateSummary(seasonGames, state.statisticsFilters))
       : renderKillTeamWinrates(killTeamSummary);
   content.innerHTML = `
+    ${venueTabs("statistics", state.statisticsVenue)}
     <section class="card panel">
       <div class="panel-header">
         <div>
           <h2>Stats</h2>
-          <p class="muted">Aggregated tournament data from completed games.</p>
+          <p class="muted">Aggregated ${state.statisticsVenue === "irl" ? "In Real Life" : "TTS"} tournament data from completed games.</p>
         </div>
       </div>
       <div class="tabs stats-tabs">
@@ -3203,6 +3252,7 @@ function renderStatistics() {
         : statisticsContent}
     </section>
   `;
+  wireVenueTabs();
   document.querySelectorAll("[data-statistics-tab]").forEach((button) => {
     button.addEventListener("click", () => {
       state.statisticsTab = button.dataset.statisticsTab;
@@ -5652,7 +5702,7 @@ function updateTotals() {
 }
 
 async function loadTop() {
-  const data = await api("/api/users");
+  const data = await api(`/api/users?venue=${encodeURIComponent(state.leaderboardVenue)}`);
   state.users = data.users || [];
 }
 
@@ -5710,11 +5760,12 @@ function renderTop() {
       { id: "users", label: "User Administration" }
     ], activeTab)}
     ${activeTab === "users" ? adminUsersPanel() : `
+      ${venueTabs("leaderboard", state.leaderboardVenue)}
       <section class="card panel">
       <div class="panel-header">
         <div>
           <h2>Leaderboard</h2>
-          <p class="muted">Sorted by current Elo.</p>
+          <p class="muted">Sorted by current ${state.leaderboardVenue === "irl" ? "In Real Life" : "TTS"} Elo.</p>
         </div>
       </div>
       ${usersTable(state.users)}
@@ -5723,6 +5774,7 @@ function renderTop() {
     `}
   `;
   wirePageTabs();
+  wireVenueTabs();
   wirePaginationControls();
   if (activeTab === "users") wireAdminUserControls();
   else wireLeaderboardProfiles();
@@ -6764,7 +6816,7 @@ function adminUsersPanel() {
       <div class="table-wrap">
         ${pageData.total ? `<table>
           <thead>
-            <tr><th>Name</th><th>Contacts</th><th>Rating</th><th>Matches</th><th>Admin</th><th></th></tr>
+            <tr><th>Name</th><th>Contacts</th><th>TTS / IRL rating</th><th>Matches</th><th>Admin</th><th></th></tr>
           </thead>
           <tbody>
             ${pageData.items.map((user) => `
@@ -6778,7 +6830,8 @@ function adminUsersPanel() {
                 </td>
                 <td>
                   <div class="admin-controls">
-                    <input class="rating-input" type="number" min="0" max="5000" value="${user.rating}" data-rating="${user.id}">
+                    <label>TTS <input class="rating-input" type="number" min="0" max="5000" value="${playerRating(user, "tts")}" data-rating-tts="${user.id}"></label>
+                    <label>IRL <input class="rating-input" type="number" min="0" max="5000" value="${playerRating(user, "irl")}" data-rating-irl="${user.id}"></label>
                     <button class="small-button" data-save-rating="${user.id}">Save</button>
                   </div>
                 </td>
@@ -6806,8 +6859,9 @@ function wireAdminUserControls() {
   document.querySelectorAll("[data-save-rating]").forEach((button) => {
     button.addEventListener("click", async () => {
       const id = button.dataset.saveRating;
-      const rating = Number(document.querySelector(`[data-rating="${id}"]`).value);
-      await adminPatch(id, { rating });
+      const ratingTts = Number(document.querySelector(`[data-rating-tts="${id}"]`).value);
+      const ratingIrl = Number(document.querySelector(`[data-rating-irl="${id}"]`).value);
+      await adminPatch(id, { ratingTts, ratingIrl });
     });
   });
   document.querySelectorAll("[data-admin-toggle]").forEach((checkbox) => {

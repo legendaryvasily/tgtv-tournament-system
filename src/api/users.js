@@ -21,8 +21,9 @@ const {
 
 const SEARCH_LIMIT = 10;
 
-async function list({ client }) {
-  const rows = await usersRepo.listLeaderboard(client);
+async function list({ client, query = new URLSearchParams() }) {
+  const venue = query.get("venue") === "irl" ? "irl" : "tts";
+  const rows = await usersRepo.listLeaderboard(client, venue);
   return { users: rows.map(leaderboardUser) };
 }
 

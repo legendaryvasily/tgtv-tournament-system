@@ -300,3 +300,25 @@ test("список завершённых игр содержит игроков
   assert.equal(list.games[0].players.length, 2);
   assert.equal("challengeCredits" in list.games[0].players[0], false);
 });
+
+test("список завершённых игр фильтруется по площадке", async () => {
+  const ttsGame = await gamesRepo.insert(client, { challengeId: null, playerIds: [alpha.id, bravo.id] });
+  const irlGame = await gamesRepo.insert(client, {
+    challengeId: null,
+    playerIds: [alpha.id, bravo.id],
+    venueMode: "irl"
+  });
+  for (const game of [ttsGame, irlGame]) {
+    await gamesRepo.saveFinalResult(client, game.id, {
+      result: { winnerId: alpha.id, scores: scores(alpha.id, bravo.id) },
+      elo: {}
+    });
+  }
+
+  const tts = await api.listCompleted({ client, query: new URLSearchParams("venue=tts") });
+  const irl = await api.listCompleted({ client, query: new URLSearchParams("venue=irl") });
+
+  assert.deepEqual(tts.games.map((game) => game.id), [ttsGame.id]);
+  assert.deepEqual(irl.games.map((game) => game.id), [irlGame.id]);
+  assert.equal(irl.games[0].venueMode, "irl");
+});

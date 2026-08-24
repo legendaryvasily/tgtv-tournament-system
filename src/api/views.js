@@ -6,6 +6,13 @@ function safeAvatar(value) {
   return value;
 }
 
+function publicRatings(user) {
+  return {
+    tts: Number(user?.ratings?.tts ?? user?.rating ?? 1000),
+    irl: Number(user?.ratings?.irl ?? user?.rating ?? 1000)
+  };
+}
+
 function publicUser(user) {
   if (!user) return null;
   return {
@@ -15,6 +22,7 @@ function publicUser(user) {
     registerNickname: user.registerNickname || "",
     telegramContact: user.telegramContact || "",
     rating: user.rating,
+    ratings: publicRatings(user),
     isAdmin: Boolean(user.isAdmin),
     createdAt: user.createdAt
   };
@@ -28,6 +36,7 @@ function publicUserSummary(user) {
     registerNickname: user.registerNickname || "",
     telegramContact: user.telegramContact || "",
     rating: user.rating,
+    ratings: publicRatings(user),
     isAdmin: Boolean(user.isAdmin),
     createdAt: user.createdAt
   };
@@ -39,6 +48,7 @@ function leaderboardUser(user) {
     name: user.name,
     avatarData: safeAvatar(user.avatarData),
     rating: user.rating,
+    ratings: publicRatings(user),
     isAdmin: Boolean(user.isAdmin)
   };
 }

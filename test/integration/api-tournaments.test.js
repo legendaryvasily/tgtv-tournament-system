@@ -1132,6 +1132,10 @@ test("IRL Swiss tournament stores season, manages tables, and uses round setup p
   }
 
   assert.equal(view.tournamentGames.length, 2);
+  assert.equal(view.tournamentGames.every((game) => game.venueMode === "irl"), true);
+  const venueRatings = await usersRepo.findByIds(client, players.map((player) => player.id));
+  assert.equal(venueRatings.every((player) => player.ratings.tts === 1000), true);
+  assert.equal(venueRatings.some((player) => player.ratings.irl !== 1000), true);
   const preview = await tournamentsApi.previewNextRoundAdmin({
     client,
     user: root,

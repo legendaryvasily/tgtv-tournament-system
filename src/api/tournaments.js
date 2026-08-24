@@ -52,15 +52,17 @@ function publicStatuses(tournament) {
 async function revertGameEloDeltas(client, games) {
   const deltas = new Map();
   for (const game of games) {
+    const venue = usersRepo.normalizeVenueMode(game.venueMode);
     for (const [userId, entry] of Object.entries(game.elo || {})) {
       const id = Number(userId);
       const delta = Number(entry?.delta || 0);
       if (!Number.isInteger(id) || !delta) continue;
-      deltas.set(id, (deltas.get(id) || 0) - delta);
+      const key = `${venue}:${id}`;
+      deltas.set(key, { id, venue, delta: (deltas.get(key)?.delta || 0) - delta });
     }
   }
-  for (const [userId, delta] of deltas) {
-    await usersRepo.addRating(client, userId, delta);
+  for (const { id, venue, delta } of deltas.values()) {
+    await usersRepo.addRating(client, id, delta, venue);
   }
 }
 
@@ -1119,7 +1121,7 @@ async function persistPreview(client, tournament, preview) {
       createdMatches.push(match);
       if (match.status === MATCH_STATUSES.ACTIVE && !match.isBye) {
         const { participantA, participantB } = requireMatchParticipants(match, participants);
-        await ensureTournamentGame(client, match, participantA, participantB);
+        await ensureTournamentGame(client, tournament, match, participantA, participantB);
       }
     }
   }
@@ -1229,13 +1231,14 @@ function assertCompletableResult(tournament, result, winnerParticipantId) {
   }
 }
 
-async function ensureTournamentGame(client, match, participantA, participantB) {
+async function ensureTournamentGame(client, tournament, match, participantA, participantB) {
   if (match.gameId) return gamesRepo.lockById(client, match.gameId);
   const game = await gamesRepo.insert(client, {
     challengeId: null,
     playerIds: [participantA.userId, participantB.userId].filter(Number.isInteger),
     sourceType: "tournament_match",
     sourceId: match.id,
+    venueMode: tournament.venueMode,
     participants: [participantA, participantB].map((participant) => ({
       userId: participant.userId || null,
       tournamentParticipantId: participant.id,
@@ -1257,12 +1260,18 @@ async function applyTournamentElo(client, tournament, participantA, participantB
   if (userIds.length === 1) {
     const [player] = await usersRepo.lockByIds(client, userIds);
     if (!player) throw new HttpError(409, "The registered tournament player has been deleted");
-    const updated = await usersRepo.addRating(client, player.id, UNREGISTERED_OPPONENT_RATING_BONUS);
+    const before = usersRepo.ratingForVenue(player, tournament.venueMode);
+    const updated = await usersRepo.addRating(
+      client,
+      player.id,
+      UNREGISTERED_OPPONENT_RATING_BONUS,
+      tournament.venueMode
+    );
     return {
       flat: UNREGISTERED_OPPONENT_RATING_BONUS,
       [player.id]: {
-        before: player.rating,
-        after: updated.rating,
+        before,
+        after: usersRepo.ratingForVenue(updated, tournament.venueMode),
         delta: UNREGISTERED_OPPONENT_RATING_BONUS
       }
     };
@@ -1273,15 +1282,17 @@ async function applyTournamentElo(client, tournament, participantA, participantB
   const playerB = players.find((player) => player.id === participantB.userId);
   if (!playerA || !playerB) throw new HttpError(409, "One of the tournament players has been deleted");
 
+  const ratingA = usersRepo.ratingForVenue(playerA, tournament.venueMode);
+  const ratingB = usersRepo.ratingForVenue(playerB, tournament.venueMode);
   const matchScoreA = matchScoreFor(result, playerA.id, playerB.id);
-  const { deltaA, deltaB } = calculateElo(playerA.rating, playerB.rating, matchScoreA);
-  const updatedA = await usersRepo.addRating(client, playerA.id, deltaA);
-  const updatedB = await usersRepo.addRating(client, playerB.id, deltaB);
+  const { deltaA, deltaB } = calculateElo(ratingA, ratingB, matchScoreA);
+  const updatedA = await usersRepo.addRating(client, playerA.id, deltaA, tournament.venueMode);
+  const updatedB = await usersRepo.addRating(client, playerB.id, deltaB, tournament.venueMode);
 
   return {
     k: ELO_K,
-    [playerA.id]: { before: playerA.rating, after: updatedA.rating, delta: deltaA },
-    [playerB.id]: { before: playerB.rating, after: updatedB.rating, delta: deltaB }
+    [playerA.id]: { before: ratingA, after: usersRepo.ratingForVenue(updatedA, tournament.venueMode), delta: deltaA },
+    [playerB.id]: { before: ratingB, after: usersRepo.ratingForVenue(updatedB, tournament.venueMode), delta: deltaB }
   };
 }
 
@@ -1355,7 +1366,7 @@ async function syncSingleElimination(client, tournament, user, match, winnerPart
       const activatedChild = await matchesRepo.findById(client, child.id);
       const participants = await participantsRepo.listByTournament(client, tournament.id);
       const { participantA, participantB } = requireMatchParticipants(activatedChild, participants);
-      await ensureTournamentGame(client, activatedChild, participantA, participantB);
+      await ensureTournamentGame(client, tournament, activatedChild, participantA, participantB);
     }
   }
 
@@ -1412,7 +1423,7 @@ async function persistSwissRound(client, tournament, roundBlueprint) {
     matches.push(match);
     if (match.status === MATCH_STATUSES.ACTIVE && !match.isBye) {
       const { participantA, participantB } = requireMatchParticipants(match, participants);
-      await ensureTournamentGame(client, match, participantA, participantB);
+      await ensureTournamentGame(client, tournament, match, participantA, participantB);
     }
   }
   return { round, matches };
@@ -1674,13 +1685,15 @@ async function rollbackLatestRoundAdmin({ client, user, params }) {
   return fullView(client, updatedTournament, user, { includeAudit: true, includePrivate: true });
 }
 
-async function reverseMatchElo(client, match) {
+async function reverseMatchElo(client, tournament, match) {
   if (!match.elo) return;
   for (const [playerId, entry] of Object.entries(match.elo)) {
     if (playerId === "k") continue;
     const id = Number(playerId);
     const delta = Number(entry?.delta || 0);
-    if (Number.isInteger(id) && delta) await usersRepo.addRating(client, id, -delta);
+    if (Number.isInteger(id) && delta) {
+      await usersRepo.addRating(client, id, -delta, tournament.venueMode);
+    }
   }
 }
 
@@ -1700,8 +1713,8 @@ async function completeMatch(
   assertCompletableResult(tournament, result, winnerParticipantId);
 
   const finalResult = resultForTournament(tournament, result, user?.id || null);
-  if (replaceCompleted) await reverseMatchElo(client, match);
-  const game = await ensureTournamentGame(client, match, participantA, participantB);
+  if (replaceCompleted) await reverseMatchElo(client, tournament, match);
+  const game = await ensureTournamentGame(client, tournament, match, participantA, participantB);
   const elo = await applyTournamentElo(client, tournament, participantA, participantB, finalResult);
   const updatedGame = await gamesRepo.saveFinalResult(client, game.id, {
     result: finalResult,

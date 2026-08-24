@@ -74,17 +74,20 @@ async function viewOf(client, game) {
 // and the admin is recorded as the submitter.
 async function applyElo(client, game, playerA, playerB, result, confirmedBy, options = {}) {
   const { newSubmission = false, submittedBy = game.submittedBy } = options;
+  const venue = usersRepo.normalizeVenueMode(game.venueMode);
+  const ratingA = usersRepo.ratingForVenue(playerA, venue);
+  const ratingB = usersRepo.ratingForVenue(playerB, venue);
 
   const matchScoreA = matchScoreFor(result, playerA.id, playerB.id);
-  const { deltaA, deltaB } = calculateElo(playerA.rating, playerB.rating, matchScoreA);
+  const { deltaA, deltaB } = calculateElo(ratingA, ratingB, matchScoreA);
 
-  const updatedA = await usersRepo.addRating(client, playerA.id, deltaA);
-  const updatedB = await usersRepo.addRating(client, playerB.id, deltaB);
+  const updatedA = await usersRepo.addRating(client, playerA.id, deltaA, venue);
+  const updatedB = await usersRepo.addRating(client, playerB.id, deltaB, venue);
 
   const elo = {
     k: ELO_K,
-    [playerA.id]: { before: playerA.rating, after: updatedA.rating, delta: deltaA },
-    [playerB.id]: { before: playerB.rating, after: updatedB.rating, delta: deltaB }
+    [playerA.id]: { before: ratingA, after: usersRepo.ratingForVenue(updatedA, venue), delta: deltaA },
+    [playerB.id]: { before: ratingB, after: usersRepo.ratingForVenue(updatedB, venue), delta: deltaB }
   };
 
   return gamesRepo.saveFinalResult(client, game.id, {
@@ -99,7 +102,7 @@ async function reverseElo(client, game) {
   if (!game.elo) return;
   for (const playerId of game.playerIds) {
     const delta = Number(game.elo?.[playerId]?.delta || 0);
-    if (delta) await usersRepo.addRating(client, playerId, -delta);
+    if (delta) await usersRepo.addRating(client, playerId, -delta, game.venueMode);
   }
 }
 
@@ -128,8 +131,9 @@ async function cancelGame(client, game) {
   return cancelled;
 }
 
-async function listCompleted({ client }) {
-  const completed = await attachTournamentGameDetails(client, await gamesRepo.listCompleted(client));
+async function listCompleted({ client, query = new URLSearchParams() }) {
+  const venue = ["tts", "irl"].includes(query.get("venue")) ? query.get("venue") : null;
+  const completed = await attachTournamentGameDetails(client, await gamesRepo.listCompleted(client, venue));
   const peopleIds = new Set();
   for (const game of completed) {
     for (const id of game.playerIds) peopleIds.add(id);
