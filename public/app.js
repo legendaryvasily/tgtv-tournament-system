@@ -1214,13 +1214,16 @@ function displayedStandings(data) {
 function publicStandingsTable(data) {
   const standings = displayedStandings(data);
   const participants = new Map((data.participants || []).map((item) => [item.id, item]));
-  const extraColumns = (data.tournament?.tiebreakerOrder || [])
+  const tiebreakerColumns = (data.tournament?.tiebreakerOrder || [])
     .filter((key, index, order) => order.indexOf(key) === index)
     .map((key) => {
       if (key === "strength_of_schedule") {
         return { label: t("tiebreaker.strengthOfSchedule.label"), value: (row) => row.strengthOfSchedule ?? 0 };
       }
       if (key === "buchholz") return { label: t("tiebreaker.buchholz.label"), value: (row) => row.buchholz ?? 0 };
+      if (key === "head_to_head") return { label: t("tiebreaker.headToHead.label"), value: (row) => row.headToHeadWins ?? 0 };
+      if (key === "total_vp") return { label: t("tiebreaker.totalVp.label"), value: (row) => row.totalVp ?? 0 };
+      if (key === "vp_diff") return { label: t("tiebreaker.vpDiff.label"), value: (row) => row.vpDiff ?? 0 };
       return null;
     })
     .filter(Boolean);
@@ -1235,9 +1238,7 @@ function publicStandingsTable(data) {
             <th>${t("games.filter.teamLabel")}</th>
             <th>${t("tournaments.standings.column.tp")}</th>
             <th>${t("tournaments.standings.column.wdl")}</th>
-            <th>${t("tournaments.standings.totalVp")}</th>
-            <th>${t("tournaments.standings.vpDiff")}</th>
-            ${extraColumns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("")}
+            ${tiebreakerColumns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("")}
           </tr>
         </thead>
         <tbody>
@@ -1250,9 +1251,7 @@ function publicStandingsTable(data) {
                 <td>${escapeHtml(participant?.faction || t("tournaments.participant.factionMissing"))}</td>
                 <td>${row.matchPoints}</td>
                 <td>${row.wins}-${row.draws}-${row.losses}</td>
-                <td>${row.totalVp}</td>
-                <td>${row.vpDiff}</td>
-                ${extraColumns.map((column) => `<td>${column.value(row)}</td>`).join("")}
+                ${tiebreakerColumns.map((column) => `<td>${column.value(row)}</td>`).join("")}
               </tr>
             `;
           }).join("")}

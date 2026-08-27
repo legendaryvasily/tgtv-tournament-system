@@ -47,7 +47,7 @@ const TGTV_I18N_EN = {
     "Sum of opponents' Tournament Points after excluding the highest and lowest opponent totals. It is 0 until the player has faced at least three opponents.",
   "tiebreaker.headToHead.label": "Head-to-head",
   "tiebreaker.headToHead.description":
-    "If the tied players faced each other, the winner of their direct match ranks higher. A draw or no direct match does not break the tie.",
+    "Number of wins against the other participants in the tied group at this priority. More wins rank higher.",
   "tiebreaker.totalVp.label": "Total VP",
   "tiebreaker.totalVp.description":
     "Total Victory Points scored by the player across all completed tournament matches.",

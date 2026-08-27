@@ -337,6 +337,57 @@ test("standings use Total VP and VP Diff only when they are enabled in tiebreake
   assert.equal(withTiebreakers[0].vpDiff, 2);
 });
 
+test("head-to-head ranks a tied group by wins against participants in that group", () => {
+  const participants = [
+    participant(1, 3),
+    participant(2, 2),
+    participant(3, 1),
+    participant(4, 4),
+    participant(5, 5),
+    participant(6, 6)
+  ];
+  const standings = buildStandings(participants, [
+    completedSwissMatch(1, 1, 2, 1),
+    completedSwissMatch(2, 1, 3, 1),
+    completedSwissMatch(3, 2, 3, 2),
+    completedSwissMatch(4, 2, 4, 2),
+    completedSwissMatch(5, 3, 5, 3),
+    completedSwissMatch(6, 3, 6, 3)
+  ], ["head_to_head"]);
+
+  assert.deepEqual(standings.slice(0, 3).map((row) => row.participant.id), [1, 2, 3]);
+  assert.deepEqual(standings.slice(0, 3).map((row) => row.headToHeadWins), [2, 1, 0]);
+  assert.deepEqual(standings.slice(0, 3).map((row) => row.rank), [1, 2, 3]);
+});
+
+test("head-to-head counts wins only inside the bucket left by higher-priority tiebreakers", () => {
+  const participants = [participant(1, 3), participant(2, 1), participant(3, 2)];
+  const match = (id, participantAId, participantBId, winnerParticipantId, totalA, totalB) => ({
+    id,
+    status: "completed",
+    isBye: false,
+    participantAId,
+    participantBId,
+    winnerParticipantId,
+    result: {
+      winnerId: winnerParticipantId,
+      scores: {
+        [participantAId]: { total: totalA },
+        [participantBId]: { total: totalB }
+      }
+    }
+  });
+  const standings = buildStandings(participants, [
+    match(1, 1, 2, 1, 12, 8),
+    match(2, 2, 3, 2, 12, 8),
+    match(3, 3, 1, 3, 14, 8)
+  ], ["total_vp", "head_to_head"]);
+
+  assert.deepEqual(standings.map((row) => row.participant.id), [3, 1, 2]);
+  assert.deepEqual(standings.map((row) => row.headToHeadWins), [0, 1, 0]);
+  assert.deepEqual(standings.map((row) => row.rank), [1, 2, 3]);
+});
+
 test("standings calculate Strength of Schedule and trimmed Buchholz separately", () => {
   const participants = [1, 2, 3, 4, 5].map((id) => participant(id, id));
   const match = (id, participantAId, participantBId, winnerParticipantId) => ({
