@@ -45,6 +45,19 @@ test("список отсортирован по рейтингу", async () => 
   assert.deepEqual(result.users.map((user) => user.name), ["Alpha", "Bravo"]);
 });
 
+test("лидерборды независимо сортируются по TTS и IRL рейтингу", async () => {
+  await usersRepo.setRating(client, alpha.id, 800, "irl");
+  await usersRepo.setRating(client, bravo.id, 1300, "irl");
+
+  const tts = await api.list({ client, query: new URLSearchParams("venue=tts") });
+  const irl = await api.list({ client, query: new URLSearchParams("venue=irl") });
+
+  assert.deepEqual(tts.users.map((user) => user.name), ["Alpha", "Bravo"]);
+  assert.deepEqual(irl.users.map((user) => user.name), ["Bravo", "Alpha"]);
+  assert.deepEqual(irl.users[0].ratings, { tts: 900, irl: 1300 });
+  assert.equal(irl.users[0].rating, 1300);
+});
+
 test("РЕГРЕСС B1: список не содержит контактов", async () => {
   const result = await api.list({ client });
   const serialized = JSON.stringify(result);
@@ -53,7 +66,7 @@ test("РЕГРЕСС B1: список не содержит контактов",
   assert.ok(!serialized.includes("AlphaNick"), "ник не должен уезжать анониму");
   assert.deepEqual(
     Object.keys(result.users[0]).sort(),
-    ["avatarData", "id", "isAdmin", "name", "rating"]
+    ["avatarData", "id", "isAdmin", "name", "rating", "ratings"]
   );
 });
 

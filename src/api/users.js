@@ -2,7 +2,6 @@ const { HttpError } = require("../http/io");
 const usersRepo = require("../db/repositories/users");
 const gamesRepo = require("../db/repositories/games");
 const challengesRepo = require("../db/repositories/challenges");
-const tournamentMatchesRepo = require("../db/repositories/tournament-matches");
 const {
   leaderboardUser,
   publicUserSummary,
@@ -17,15 +16,14 @@ const {
 const { requirePositiveIntId } = require("./params");
 const {
   attachTournamentGameDetails,
-  collectSyntheticPeopleIds,
-  sortGameViews,
-  syntheticTournamentMatchGames
+  sortGameViews
 } = require("./tournament-game-details");
 
 const SEARCH_LIMIT = 10;
 
-async function list({ client }) {
-  const rows = await usersRepo.listLeaderboard(client);
+async function list({ client, query = new URLSearchParams() }) {
+  const venue = query.get("venue") === "irl" ? "irl" : "tts";
+  const rows = await usersRepo.listLeaderboard(client, venue);
   return { users: rows.map(leaderboardUser) };
 }
 
@@ -57,24 +55,17 @@ async function profile({ client, user, params }) {
     client,
     await gamesRepo.listCompletedForUser(client, target.id)
   );
-  const completedUnlinkedTournamentMatches = await tournamentMatchesRepo.listCompletedUnlinkedForUser(
-    client,
-    target.id
-  );
   const activeGame = isSelf ? null : await gamesRepo.findActiveBetween(client, user.id, target.id);
   const pendingChallenge = isSelf
     ? null
     : await challengesRepo.findPendingBetween(client, user.id, target.id);
   const adminPendingGames = user.isAdmin
-    ? await gamesRepo.listPendingForUser(client, target.id)
+    ? await attachTournamentGameDetails(client, await gamesRepo.listPendingForUser(client, target.id))
     : [];
 
   const peopleIds = new Set([target.id, user.id]);
   for (const game of [...completedGames, ...adminPendingGames]) {
     for (const id of game.playerIds) peopleIds.add(id);
-  }
-  for (const id of collectSyntheticPeopleIds(completedUnlinkedTournamentMatches)) {
-    peopleIds.add(id);
   }
   if (activeGame) for (const id of activeGame.playerIds) peopleIds.add(id);
   if (pendingChallenge) {
@@ -82,10 +73,7 @@ async function profile({ client, user, params }) {
     peopleIds.add(pendingChallenge.toUserId);
   }
   const people = await usersRepo.findByIds(client, [...peopleIds]);
-  const allCompletedGames = sortGameViews([
-    ...completedGames,
-    ...syntheticTournamentMatchGames(completedUnlinkedTournamentMatches, people)
-  ]);
+  const allCompletedGames = sortGameViews(completedGames);
 
   return publicProfileSummary({
     user: target,
@@ -108,10 +96,6 @@ async function challengeProgress({ client, user, query }) {
   const requestedId = raw ? requirePositiveIntId(raw, 404, "User not found") : user.id;
   const target = await requireUser(client, requestedId);
   const completedGames = await gamesRepo.listCompletedForUser(client, target.id);
-  const completedUnlinkedTournamentMatches = await tournamentMatchesRepo.listCompletedUnlinkedForUser(
-    client,
-    target.id
-  );
 
   return {
     teams: CLASSIFIED_TRACK,
@@ -119,10 +103,7 @@ async function challengeProgress({ client, user, query }) {
     allKillTeamTeams: ALL_KILL_TEAM_TRACK,
     users: [
       challengeProgressView(
-        sortGameViews([
-          ...completedGames,
-          ...syntheticTournamentMatchGames(completedUnlinkedTournamentMatches)
-        ]),
+        sortGameViews(completedGames),
         target
       )
     ]

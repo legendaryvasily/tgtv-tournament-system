@@ -4,6 +4,18 @@ function nameKeyOf(name) {
   return String(name || "").toLowerCase();
 }
 
+function normalizeVenueMode(value) {
+  return value === "irl" ? "irl" : "tts";
+}
+
+function ratingColumn(value) {
+  return normalizeVenueMode(value) === "irl" ? "rating_irl" : "rating_tts";
+}
+
+function ratingForVenue(user, venueMode) {
+  return Number(user?.ratings?.[normalizeVenueMode(venueMode)] ?? user?.rating ?? 1000);
+}
+
 async function findById(client, id) {
   const { rows } = await client.query(`SELECT ${COLUMNS} FROM users WHERE id = $1`, [id]);
   return mapUser(rows[0]);
@@ -45,16 +57,20 @@ async function isNameTaken(client, name, excludeId = null) {
   return rows.length > 0;
 }
 
-async function listLeaderboard(client) {
+async function listLeaderboard(client, venueMode = "tts") {
+  const venue = normalizeVenueMode(venueMode);
+  const column = ratingColumn(venue);
   const { rows } = await client.query(
-    `SELECT id, name, avatar_data, rating, is_admin
-     FROM users ORDER BY rating DESC, name ASC`
+    `SELECT id, name, avatar_data, rating_tts, rating_irl, ${column} AS selected_rating, is_admin
+     FROM users ORDER BY ${column} DESC, name ASC`
   );
   return rows.map((row) => ({
     id: row.id,
     name: row.name,
     avatarData: row.avatar_data || null,
-    rating: row.rating,
+    rating: row.selected_rating,
+    ratings: { tts: row.rating_tts, irl: row.rating_irl },
+    venueMode: venue,
     isAdmin: row.is_admin
   }));
 }
@@ -64,13 +80,18 @@ async function listWithGameCounts(client) {
     `SELECT ${COLUMNS},
             (SELECT COUNT(*)::int FROM games
               WHERE games.status = 'completed' AND users.id = ANY(games.player_ids)) AS games_played
-     FROM users ORDER BY rating DESC, name ASC`
+     FROM users ORDER BY rating_tts DESC, name ASC`
   );
   return rows.map((row) => ({ ...mapUser(row), gamesPlayed: row.games_played }));
 }
 
 async function listForRatingReplay(client) {
-  const { rows } = await client.query(`SELECT ${COLUMNS} FROM users ORDER BY id FOR UPDATE`);
+  // Keep the migration/replay query intentionally minimal. Migration 012 calls
+  // this immediately after adding the venue rating columns, so selecting the
+  // evolving public USER_COLUMNS list would make it depend on future schema.
+  const { rows } = await client.query(
+    `SELECT id, rating, rating_tts, rating_irl FROM users ORDER BY id FOR UPDATE`
+  );
   return rows.map(mapUser);
 }
 
@@ -89,7 +110,7 @@ async function search(client, { q, excludeId, limit = 10 }) {
        AND ($2 = '' OR name_key LIKE '%' || $2 || '%' ESCAPE '\\'
             OR LOWER(COALESCE(register_nickname, '')) LIKE '%' || $2 || '%' ESCAPE '\\'
             OR LOWER(COALESCE(telegram_contact, '')) LIKE '%' || $2 || '%' ESCAPE '\\')
-     ORDER BY rating DESC, name ASC
+     ORDER BY rating_tts DESC, name ASC
      LIMIT $3`,
     [excludeId, term, limit]
   );
@@ -100,8 +121,8 @@ async function insert(client, user) {
   const { rows } = await client.query(
     `INSERT INTO users
        (name, name_key, password_hash, avatar_data, register_nickname,
-        telegram_contact, challenge_credits, rating, is_admin)
-     VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9)
+        telegram_contact, challenge_credits, rating, rating_tts, rating_irl, is_admin)
+     VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $8, $8, $9)
      RETURNING ${COLUMNS}`,
     [
       user.name,
@@ -157,22 +178,37 @@ async function setPasswordHash(client, id, passwordHash) {
   return mapUser(rows[0]);
 }
 
-async function addRating(client, id, delta) {
+async function addRating(client, id, delta, venueMode = "tts") {
+  const venue = normalizeVenueMode(venueMode);
+  const column = ratingColumn(venue);
+  const legacyAssignment = venue === "tts" ? ", rating = rating + $2" : "";
   const { rows } = await client.query(
-    `UPDATE users SET rating = rating + $2, updated_at = NOW()
+    `UPDATE users SET ${column} = ${column} + $2${legacyAssignment}, updated_at = NOW()
      WHERE id = $1 RETURNING ${COLUMNS}`,
     [id, delta]
   );
   return mapUser(rows[0]);
 }
 
-async function setRating(client, id, rating) {
+async function setRating(client, id, rating, venueMode = "tts") {
+  const venue = normalizeVenueMode(venueMode);
+  const column = ratingColumn(venue);
+  const legacyAssignment = venue === "tts" ? ", rating = $2" : "";
   const { rows } = await client.query(
-    `UPDATE users SET rating = $2, updated_at = NOW()
+    `UPDATE users SET ${column} = $2${legacyAssignment}, updated_at = NOW()
      WHERE id = $1 RETURNING ${COLUMNS}`,
     [id, rating]
   );
   return mapUser(rows[0]);
+}
+
+async function setRatings(client, id, ratings) {
+  await client.query(
+    `UPDATE users
+     SET rating = $2, rating_tts = $2, rating_irl = $3, updated_at = NOW()
+     WHERE id = $1`,
+    [id, ratings.tts, ratings.irl]
+  );
 }
 
 async function setAdmin(client, id, isAdmin) {
@@ -222,8 +258,11 @@ module.exports = {
   insert,
   updateProfile,
   setPasswordHash,
+  normalizeVenueMode,
+  ratingForVenue,
   addRating,
   setRating,
+  setRatings,
   setAdmin,
   appendChallengeCredit,
   remove,

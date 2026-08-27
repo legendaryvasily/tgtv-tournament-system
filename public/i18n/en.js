@@ -18,6 +18,7 @@ const TGTV_I18N_EN = {
   "common.requestFailed": "Request failed",
   "common.chooseFromList": "Choose an option from the list",
   "common.noMatches": "No matches",
+  "common.notAssigned": "Not assigned",
   "common.themeToggle.toDark": "Switch to dark theme",
   "common.themeToggle.toLight": "Switch to light theme",
 
@@ -62,6 +63,7 @@ const TGTV_I18N_EN = {
   // -- venue ----------------------------------------------------------------
   "venue.tts": "Tabletop Simulator",
   "venue.irl": "In Real Life",
+  "venue.tabsAria": "Game venue",
 
   // -- auth -----------------------------------------------------------------
   "auth.brand.logoAlt": "TGTV logo",
@@ -144,13 +146,20 @@ const TGTV_I18N_EN = {
 
   "games.detail.notFound": "Game not found.",
   "games.detail.title": "Game #{id}",
+  "games.detail.tournamentTitle": "Tournament match details",
   "games.detail.backToGames": "Back to Games",
+  "games.detail.metric.tournament": "Tournament",
+  "games.detail.metric.round": "Round",
+  "games.detail.metric.match": "Match",
+  "games.detail.metric.table": "Table",
   "games.detail.submittedBy": "Submitted by {name}",
   "games.detail.noResult": "No result has been submitted yet.",
   "games.detail.forceConfirm": "Force confirm",
   "games.detail.deleteGame": "Delete game",
   "games.detail.deletedPlayers": "Deleted players",
   "games.detail.eloChanges": "Elo changes",
+  "profile.rating.ttsElo": "TTS Elo",
+  "profile.rating.irlElo": "IRL Elo",
 
   "games.result.title": "Approved Ops result",
   "games.result.editTitle": "Edit Approved Ops result",
@@ -291,6 +300,7 @@ const TGTV_I18N_EN = {
   "tournaments.card.open": "Open",
 
   "tournaments.round.title": "Round {number}",
+  "tournaments.round.tabsAria": "Tournament rounds",
   "tournaments.matches.empty": "Matches are not generated yet.",
   "tournaments.match.bye": "Bye",
   "tournaments.match.byeUpper": "BYE",
@@ -338,6 +348,7 @@ const TGTV_I18N_EN = {
   // -- stats ----------------------------------------------------------------
   "stats.title": "Stats",
   "stats.hint": "Aggregated tournament data from completed games.",
+  "stats.hintWithVenue": "Aggregated {venue} tournament data from completed games.",
   "stats.tab.killTeamWinrates": "Kill Team Winrates",
   "stats.tab.tacOpWinrates": "Tac Ops Winrates",
   "stats.tab.teams": "Teams",
@@ -499,6 +510,7 @@ const TGTV_I18N_EN = {
   "leaderboard.tab.users": "User Administration",
   "leaderboard.title": "Leaderboard",
   "leaderboard.hint": "Sorted by current Elo.",
+  "leaderboard.hintWithVenue": "Sorted by current {venue} Elo.",
   "leaderboard.empty": "No users yet.",
   "leaderboard.pagination.showing": "Showing {first}-{end} of {total} {label}.",
   "leaderboard.pagination.page": "Page {current} of {total}",
@@ -509,6 +521,7 @@ const TGTV_I18N_EN = {
   "leaderboard.users.pagination.users": { one: "user", other: "users" },
   "leaderboard.users.column.name": "Name",
   "leaderboard.users.column.contacts": "Contacts",
+  "leaderboard.users.column.venueRatings": "TTS / IRL rating",
   "leaderboard.users.column.admin": "Admin",
   "leaderboard.users.contact.register": "Register: {value}",
   "leaderboard.users.contact.telegram": "Telegram: {value}",
@@ -578,6 +591,7 @@ const TGTV_I18N_EN = {
   "admin.tournament.participants.bulkPlaceholder": "One display name per line",
   "admin.tournament.participants.bulkAdd": "Bulk add",
   "admin.tournament.participants.saveSeeds": "Save seed order",
+  "admin.tournament.participants.regenerateSeeds": "Regenerate seeds",
   "admin.tournament.participants.replace": "Replace",
   "admin.tournament.participants.linkUser": "Link user",
   "admin.tournament.participants.replacePlaceholder": "Replace with registered user",
@@ -597,6 +611,7 @@ const TGTV_I18N_EN = {
   "admin.tournament.preview.pendingResult": "Pending result",
   "admin.tournament.rounds.title": "Rounds and matches",
   "admin.tournament.rounds.hint": "Admin result entry completes active tournament matches immediately.",
+  "admin.tournament.action.rollbackLatestRound": "Undo current round",
   "admin.tournament.tiebreaker.priority": "Priority {index}",
   "admin.tournament.tiebreaker.none": "None",
   "admin.tournament.tiebreaker.heading": "Standings tiebreakers",
@@ -626,9 +641,12 @@ const TGTV_I18N_EN = {
   "admin.games.status.open": "open",
   "admin.games.empty": "No active games.",
   "admin.roundSetup.title": "Generate Round {number}",
+  "admin.roundSetup.regenerateTitle": "Regenerate Round {number}",
   "admin.roundSetup.hint": "Review pairings before saving the round.",
+  "admin.roundSetup.restoredHint": "The previous pairings and tables were restored. Review them before saving.",
   "admin.roundSetup.addEmpty": "Create empty pairing",
   "admin.roundSetup.submit": "Generate round",
+  "admin.roundSetup.regenerateSubmit": "Regenerate round",
   "admin.roundSetup.clear": "Clear",
   "admin.roundSetup.playerA": "Player A",
   "admin.roundSetup.playerB": "Player B",
@@ -652,12 +670,17 @@ const TGTV_I18N_EN = {
   "dialog.admin.deleteTournament": "Delete tournament “{name}”? Linked tournament games will be deleted and ratings will be recalculated.",
   "dialog.admin.deleteTable": "Delete Table {number}?",
   "dialog.admin.removeParticipant": "Remove {name}?",
+  "dialog.admin.rollbackLatestRound": "Undo Round {number}? The round and its active games will be removed; pairings and tables will reopen as a draft.",
+  "dialog.admin.regenerateSeeds": "Regenerate seeds as a contiguous sequence while preserving their current order?",
   "dialog.admin.participantFallback": "participant",
 
   // -- message ------------------------------------------------------------------
   "message.auth.passwordMismatch": "Passwords do not match",
   "message.games.deleted": "Game deleted.",
-  "message.games.forceConfirmed": "Result force confirmed."
+  "message.games.forceConfirmed": "Result force confirmed.",
+  "message.games.tournamentMatchSubmitted": "Tournament match submitted successfully.",
+  "message.games.resultSubmittedPending": "Result submitted successfully. Waiting for opponent confirmation.",
+  "message.games.matchResultSaved": "Match result saved successfully."
 };
 
 if (typeof module !== "undefined") module.exports = TGTV_I18N_EN;

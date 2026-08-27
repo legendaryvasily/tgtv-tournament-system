@@ -190,6 +190,8 @@ test("glossary covers every protected category", () => {
     "Killzone",
     "Strength of Schedule",
     "SoS",
+    "APL",
+    "Roll-off",
     "Classified",
     "Non-Classified",
     "Tabletop Simulator",

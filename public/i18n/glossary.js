@@ -27,6 +27,8 @@ const RULES_TERMS = [
   "Killzone",
   "Killzones",
   "Dataslate",
+  "APL",
+  "Roll-off",
   "Elo",
   "Strength of Schedule",
   "SoS"
@@ -36,6 +38,7 @@ const RULES_TERMS = [
 const PROPER_NAMES = [
   "Warhammer 40k Kill Team",
   "Tabletop Simulator",
+  "TTS",
   "All Kill Team Challenge",
   "Classified",
   "Non-Classified",

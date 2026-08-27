@@ -11,9 +11,10 @@ const { requirePositiveIntId } = require("./params");
 const {
   tournamentDetailView,
   tournamentSummaryView,
-  tournamentMatchGameView,
+  gameView,
   tournamentTableView
 } = require("./views");
+const { attachTournamentGameDetails } = require("./tournament-game-details");
 const { buildTournamentPreview } = require("../domain/tournaments/preview");
 const { buildStandings } = require("../domain/tournaments/standings");
 const { calculateSubmittedResult, matchScoreFor, parseKillzone } = require("../domain/scoring");
@@ -51,15 +52,17 @@ function publicStatuses(tournament) {
 async function revertGameEloDeltas(client, games) {
   const deltas = new Map();
   for (const game of games) {
+    const venue = usersRepo.normalizeVenueMode(game.venueMode);
     for (const [userId, entry] of Object.entries(game.elo || {})) {
       const id = Number(userId);
       const delta = Number(entry?.delta || 0);
       if (!Number.isInteger(id) || !delta) continue;
-      deltas.set(id, (deltas.get(id) || 0) - delta);
+      const key = `${venue}:${id}`;
+      deltas.set(key, { id, venue, delta: (deltas.get(key)?.delta || 0) - delta });
     }
   }
-  for (const [userId, delta] of deltas) {
-    await usersRepo.addRating(client, userId, delta);
+  for (const { id, venue, delta } of deltas.values()) {
+    await usersRepo.addRating(client, id, delta, venue);
   }
 }
 
@@ -234,12 +237,16 @@ function applyRoundSetupBody(roundBlueprint, participants, body = {}) {
   const matches = baseMatches.map((match, index) => {
     const setup = setupMatches[index] || {};
     if (match.isBye) return { ...match, mission: roundMission };
-    const participantAId = setup.participantAId === undefined || setup.participantAId === ""
+    const participantAId = setup.participantAId === undefined
       ? match.participantAId || null
-      : Number(setup.participantAId);
-    const participantBId = setup.participantBId === undefined || setup.participantBId === ""
+      : setup.participantAId === "" || setup.participantAId === null
+        ? null
+        : Number(setup.participantAId);
+    const participantBId = setup.participantBId === undefined
       ? match.participantBId || null
-      : Number(setup.participantBId);
+      : setup.participantBId === "" || setup.participantBId === null
+        ? null
+        : Number(setup.participantBId);
     if (
       (participantAId && !Number.isSafeInteger(participantAId)) ||
       (participantBId && !Number.isSafeInteger(participantBId))
@@ -323,18 +330,12 @@ async function fullView(client, tournament, user, { includeAudit = false } = {})
   const standings = buildStandings(participants, matches, tournament.tiebreakerOrder);
   const auditEvents = includeAudit ? await auditRepo.listByTournament(client, tournament.id) : [];
   const visibleParticipants = participants.filter(isListedParticipant);
-  const participantById = new Map(participants.map((participant) => [participant.id, participant]));
-  const tournamentGames = matches
-    .filter((match) => match.status === MATCH_STATUSES.COMPLETED && !match.isBye && match.result)
-    .map((match) =>
-      tournamentMatchGameView({
-        tournament,
-        match,
-        participantA: participantById.get(match.participantAId),
-        participantB: participantById.get(match.participantBId),
-        people
-      })
-    );
+  const completedGameIds = matches
+    .filter((match) => match.status === MATCH_STATUSES.COMPLETED && !match.isBye && match.result && match.gameId)
+    .map((match) => match.gameId);
+  const tournamentGames = (
+    await attachTournamentGameDetails(client, await gamesRepo.listByIds(client, completedGameIds))
+  ).map((game) => gameView(game, people));
 
   return tournamentDetailView({
     tournament,
@@ -438,6 +439,9 @@ async function publishAdmin({ client, user, params, body }) {
     publishedAt: nowIso()
   });
   await audit(client, updated, user, "publish", { before: tournament, after: updated });
+  if (status === TOURNAMENT_STATUSES.REGISTRATION_CLOSED) {
+    await regenerateTournamentSeeds(client, updated, user, "seeds_regenerate_on_registration_close");
+  }
   return { tournament: tournamentSummaryView(updated) };
 }
 
@@ -452,6 +456,12 @@ async function setRegistration({ client, user, params, status }) {
   }
   const updated = await tournamentsRepo.update(client, tournament.id, { status });
   await audit(client, updated, user, `registration_${status}`, { before: tournament, after: updated });
+  if (
+    status === TOURNAMENT_STATUSES.REGISTRATION_CLOSED &&
+    tournament.status !== TOURNAMENT_STATUSES.REGISTRATION_CLOSED
+  ) {
+    await regenerateTournamentSeeds(client, updated, user, "seeds_regenerate_on_registration_close");
+  }
   return { tournament: tournamentSummaryView(updated) };
 }
 
@@ -688,14 +698,54 @@ async function removeParticipant({ client, user, params }) {
   return { participant: updated };
 }
 
-async function updateSeeds({ client, user, params, body }) {
-  const tournament = await requireTournament(client, params.id, { forUpdate: true });
+function competitiveSeedParticipants(participants) {
+  return participants.filter((item) => ["joined", "active"].includes(item.status));
+}
+
+function currentSeedOrder(participants) {
+  return [...competitiveSeedParticipants(participants)].sort((a, b) => {
+    const aSeed = Number.isInteger(a.seed) && a.seed > 0 ? a.seed : Number.MAX_SAFE_INTEGER;
+    const bSeed = Number.isInteger(b.seed) && b.seed > 0 ? b.seed : Number.MAX_SAFE_INTEGER;
+    return aSeed - bSeed || a.id - b.id;
+  });
+}
+
+async function persistSeedOrder(client, tournament, user, active, ids, eventType) {
+  const updated = [];
+  for (let index = 0; index < ids.length; index += 1) {
+    const participant = active.find((item) => item.id === ids[index]);
+    updated.push(
+      participant.seed === index + 1
+        ? participant
+        : await participantsRepo.update(client, participant.id, { seed: index + 1 })
+    );
+  }
+  await audit(client, tournament, user, eventType, {
+    before: active.map((participant) => ({ id: participant.id, seed: participant.seed })),
+    after: updated.map((participant) => ({ id: participant.id, seed: participant.seed }))
+  });
+  return updated;
+}
+
+async function regenerateTournamentSeeds(client, tournament, user, eventType = "seeds_regenerate") {
+  const participants = await participantsRepo.lockByTournament(client, tournament.id);
+  const active = competitiveSeedParticipants(participants);
+  const ids = currentSeedOrder(active).map((participant) => participant.id);
+  return persistSeedOrder(client, tournament, user, active, ids, eventType);
+}
+
+function assertSeedsEditable(tournament) {
   if (tournament.status === TOURNAMENT_STATUSES.IN_PROGRESS) {
     throw new HttpError(409, "Seeds are locked after start");
   }
   assertEditableSetup(tournament);
+}
+
+async function updateSeeds({ client, user, params, body }) {
+  const tournament = await requireTournament(client, params.id, { forUpdate: true });
+  assertSeedsEditable(tournament);
   const participants = await participantsRepo.lockByTournament(client, tournament.id);
-  const active = participants.filter((item) => ["joined", "active"].includes(item.status));
+  const active = competitiveSeedParticipants(participants);
   const ids = Array.isArray(body.participantIds)
     ? body.participantIds.map((id) => requirePositiveIntId(id, 400, "Invalid seed order"))
     : [];
@@ -704,11 +754,14 @@ async function updateSeeds({ client, user, params, body }) {
   if (new Set(ids).size !== ids.length || ids.some((id) => !activeIds.has(id))) {
     throw new ValidationError("Seed order must include every active participant once");
   }
-  const updated = [];
-  for (let index = 0; index < ids.length; index += 1) {
-    updated.push(await participantsRepo.update(client, ids[index], { seed: index + 1 }));
-  }
-  await audit(client, tournament, user, "seeds_update", { after: updated });
+  const updated = await persistSeedOrder(client, tournament, user, active, ids, "seeds_update");
+  return { participants: updated };
+}
+
+async function regenerateSeeds({ client, user, params }) {
+  const tournament = await requireTournament(client, params.id, { forUpdate: true });
+  assertSeedsEditable(tournament);
+  const updated = await regenerateTournamentSeeds(client, tournament, user);
   return { participants: updated };
 }
 
@@ -828,6 +881,75 @@ function pairingsCountForTables(roundBlueprint) {
   ).length;
 }
 
+function roundDraftSetupBody(draft, body = {}) {
+  return {
+    mission: Object.prototype.hasOwnProperty.call(body, "mission")
+      ? body.mission
+      : draft.mission || {},
+    matchups: Array.isArray(body.matchups) ? body.matchups : draft.matchups || []
+  };
+}
+
+async function prepareRolledBackRoundSetup(
+  client,
+  tournament,
+  user,
+  rounds,
+  matches,
+  participants,
+  body = {}
+) {
+  const draft = tournament.roundDraft;
+  const setupBody = roundDraftSetupBody(draft, body);
+  let roundBlueprint;
+
+  if (tournament.format === TOURNAMENT_FORMATS.SWISS) {
+    if (!rounds.length) {
+      const preview = buildTournamentPreview(tournament, firstRoundParticipantPool(participants));
+      roundBlueprint = preview.rounds[0];
+    } else {
+      const nextRoundNumber = assertNextSwissRoundAllowed(tournament, rounds, matches);
+      roundBlueprint = buildSwissNextRound(tournament, participants, matches, nextRoundNumber);
+      roundBlueprint.generatedBy = `admin:${user.id}`;
+    }
+  } else {
+    const existingRound = rounds.find((round) => round.id === Number(draft.roundId));
+    if (!existingRound || existingRound.status !== ROUND_STATUSES.NOT_READY) {
+      throw new HttpError(409, "The rolled-back bracket round is no longer available");
+    }
+    const existingMatches = matchesForRound(matches, existingRound);
+    roundBlueprint = {
+      id: existingRound.id,
+      roundNumber: existingRound.roundNumber,
+      status: ROUND_STATUSES.ACTIVE,
+      mission: null,
+      matches: existingMatches.map((match, index) => ({
+        ...match,
+        key: `existing-${match.id}`,
+        bracketPosition: match.bracketPosition || index + 1,
+        status: match.isBye ? MATCH_STATUSES.COMPLETED : MATCH_STATUSES.ACTIVE,
+        completedAt: match.isBye ? nowIso() : null
+      }))
+    };
+  }
+
+  if (Number(roundBlueprint?.roundNumber) !== Number(draft.roundNumber)) {
+    throw new HttpError(409, "The tournament has moved past the rolled-back round");
+  }
+  const setupRound = applyRoundSetupBody(
+    roundBlueprint,
+    roundSetupParticipantPool(participants),
+    setupBody
+  );
+  const tables = await ensureTablesForPairings(client, tournament, pairingsCountForTables(setupRound));
+  return {
+    isFirstRound: !rounds.length,
+    round: applyRoundMissionAndTables(tournament, setupRound, tables, matches),
+    tables,
+    restoredDraft: true
+  };
+}
+
 function assertNextSwissRoundAllowed(tournament, rounds, matches) {
   const latestRound = rounds[rounds.length - 1];
   if (!latestRound || !roundIsComplete(latestRound, matches)) {
@@ -886,6 +1008,17 @@ async function prepareFirstRoundSetup(client, tournament, rounds, matches, parti
 }
 
 async function prepareNextRoundSetup(client, tournament, user, rounds, matches, participants, body = {}) {
+  if (tournament.roundDraft) {
+    return prepareRolledBackRoundSetup(
+      client,
+      tournament,
+      user,
+      rounds,
+      matches,
+      participants,
+      body
+    );
+  }
   if (!rounds.length) {
     return prepareFirstRoundSetup(client, tournament, rounds, matches, participants, body);
   }
@@ -936,7 +1069,7 @@ async function previewNextRoundAdmin({ client, user, params }) {
   const rounds = await roundsRepo.listByTournament(client, tournament.id);
   const matches = await matchesRepo.listByTournament(client, tournament.id);
   const participants = await participantsRepo.listByTournament(client, tournament.id);
-  const { round, tables } = await prepareNextRoundSetup(
+  const { round, tables, restoredDraft = false } = await prepareNextRoundSetup(
     client,
     tournament,
     user,
@@ -946,7 +1079,8 @@ async function previewNextRoundAdmin({ client, user, params }) {
   );
   return {
     round: roundSetupView(round, tables, participants),
-    tables: tables.map(tournamentTableView)
+    tables: tables.map(tournamentTableView),
+    restoredDraft
   };
 }
 
@@ -954,6 +1088,7 @@ async function persistPreview(client, tournament, preview) {
   const matchIdByKey = new Map();
   const createdRounds = [];
   const createdMatches = [];
+  const participants = await participantsRepo.listByTournament(client, tournament.id);
   for (const roundBlueprint of preview.rounds) {
     const matchPairingCount = roundBlueprint.matches.filter(
       (match) => !match.isBye && matchParticipantIds(match).length === 2
@@ -984,6 +1119,10 @@ async function persistPreview(client, tournament, preview) {
       });
       matchIdByKey.set(matchBlueprint.key, match.id);
       createdMatches.push(match);
+      if (match.status === MATCH_STATUSES.ACTIVE && !match.isBye) {
+        const { participantA, participantB } = requireMatchParticipants(match, participants);
+        await ensureTournamentGame(client, tournament, match, participantA, participantB);
+      }
     }
   }
   return { rounds: createdRounds, matches: createdMatches };
@@ -1092,15 +1231,25 @@ function assertCompletableResult(tournament, result, winnerParticipantId) {
   }
 }
 
-async function ensureTournamentGame(client, match, participantA, participantB) {
-  if (!participantA.userId || !participantB.userId) return null;
+async function ensureTournamentGame(client, tournament, match, participantA, participantB) {
   if (match.gameId) return gamesRepo.lockById(client, match.gameId);
-  return gamesRepo.insert(client, {
+  const game = await gamesRepo.insert(client, {
     challengeId: null,
-    playerIds: [participantA.userId, participantB.userId],
+    playerIds: [participantA.userId, participantB.userId].filter(Number.isInteger),
     sourceType: "tournament_match",
-    sourceId: match.id
+    sourceId: match.id,
+    venueMode: tournament.venueMode,
+    participants: [participantA, participantB].map((participant) => ({
+      userId: participant.userId || null,
+      tournamentParticipantId: participant.id,
+      resultKey: participantResultKey(participant),
+      displayNameSnapshot: participant.displayName || "Player",
+      factionSnapshot: participant.faction || ""
+    }))
   });
+  await matchesRepo.update(client, match.id, { gameId: game.id });
+  match.gameId = game.id;
+  return game;
 }
 
 async function applyTournamentElo(client, tournament, participantA, participantB, result) {
@@ -1111,12 +1260,18 @@ async function applyTournamentElo(client, tournament, participantA, participantB
   if (userIds.length === 1) {
     const [player] = await usersRepo.lockByIds(client, userIds);
     if (!player) throw new HttpError(409, "The registered tournament player has been deleted");
-    const updated = await usersRepo.addRating(client, player.id, UNREGISTERED_OPPONENT_RATING_BONUS);
+    const before = usersRepo.ratingForVenue(player, tournament.venueMode);
+    const updated = await usersRepo.addRating(
+      client,
+      player.id,
+      UNREGISTERED_OPPONENT_RATING_BONUS,
+      tournament.venueMode
+    );
     return {
       flat: UNREGISTERED_OPPONENT_RATING_BONUS,
       [player.id]: {
-        before: player.rating,
-        after: updated.rating,
+        before,
+        after: usersRepo.ratingForVenue(updated, tournament.venueMode),
         delta: UNREGISTERED_OPPONENT_RATING_BONUS
       }
     };
@@ -1127,15 +1282,17 @@ async function applyTournamentElo(client, tournament, participantA, participantB
   const playerB = players.find((player) => player.id === participantB.userId);
   if (!playerA || !playerB) throw new HttpError(409, "One of the tournament players has been deleted");
 
+  const ratingA = usersRepo.ratingForVenue(playerA, tournament.venueMode);
+  const ratingB = usersRepo.ratingForVenue(playerB, tournament.venueMode);
   const matchScoreA = matchScoreFor(result, playerA.id, playerB.id);
-  const { deltaA, deltaB } = calculateElo(playerA.rating, playerB.rating, matchScoreA);
-  const updatedA = await usersRepo.addRating(client, playerA.id, deltaA);
-  const updatedB = await usersRepo.addRating(client, playerB.id, deltaB);
+  const { deltaA, deltaB } = calculateElo(ratingA, ratingB, matchScoreA);
+  const updatedA = await usersRepo.addRating(client, playerA.id, deltaA, tournament.venueMode);
+  const updatedB = await usersRepo.addRating(client, playerB.id, deltaB, tournament.venueMode);
 
   return {
     k: ELO_K,
-    [playerA.id]: { before: playerA.rating, after: updatedA.rating, delta: deltaA },
-    [playerB.id]: { before: playerB.rating, after: updatedB.rating, delta: deltaB }
+    [playerA.id]: { before: ratingA, after: usersRepo.ratingForVenue(updatedA, tournament.venueMode), delta: deltaA },
+    [playerB.id]: { before: ratingB, after: usersRepo.ratingForVenue(updatedB, tournament.venueMode), delta: deltaB }
   };
 }
 
@@ -1206,6 +1363,10 @@ async function syncSingleElimination(client, tournament, user, match, winnerPart
       await matchesRepo.update(client, child.id, {
         status: MATCH_STATUSES.ACTIVE
       });
+      const activatedChild = await matchesRepo.findById(client, child.id);
+      const participants = await participantsRepo.listByTournament(client, tournament.id);
+      const { participantA, participantB } = requireMatchParticipants(activatedChild, participants);
+      await ensureTournamentGame(client, tournament, activatedChild, participantA, participantB);
     }
   }
 
@@ -1243,19 +1404,27 @@ async function persistSwissRound(client, tournament, roundBlueprint) {
     roundNumber: roundBlueprint.roundNumber,
     status: roundBlueprint.status,
     generatedBy: roundBlueprint.generatedBy || "system",
-    metadata: { format: "swiss", mission: roundBlueprint.mission || null },
+    metadata: {
+      ...(roundBlueprint.metadata || {}),
+      format: "swiss",
+      mission: roundBlueprint.mission || null
+    },
     startedAt: nowIso()
   });
   const matches = [];
+  const participants = await participantsRepo.listByTournament(client, tournament.id);
   for (const matchBlueprint of roundBlueprint.matches) {
-    matches.push(
-      await matchesRepo.insert(client, {
+    const match = await matchesRepo.insert(client, {
         ...matchBlueprint,
         tournamentId: tournament.id,
         roundId: round.id,
         completedAt: matchBlueprint.status === MATCH_STATUSES.COMPLETED ? nowIso() : null
-      })
-    );
+      });
+    matches.push(match);
+    if (match.status === MATCH_STATUSES.ACTIVE && !match.isBye) {
+      const { participantA, participantB } = requireMatchParticipants(match, participants);
+      await ensureTournamentGame(client, tournament, match, participantA, participantB);
+    }
   }
   return { round, matches };
 }
@@ -1324,6 +1493,10 @@ async function generateSwissNextRound(client, tournament, user, rounds, matches,
     participants,
     body
   );
+  nextRound.metadata = {
+    ...(nextRound.metadata || {}),
+    activatedParticipantIds: pending.map((participant) => participant.id)
+  };
   await persistSwissRound(client, tournament, nextRound);
   for (const participant of pending) {
     await participantsRepo.update(client, participant.id, {
@@ -1390,17 +1563,137 @@ async function generateNextRoundAdmin({ client, user, params, body }) {
     await generateSingleEliminationNextRound(client, tournament, user, rounds, matches, participants, body);
   }
 
+  if (tournament.roundDraft) {
+    await tournamentsRepo.update(client, tournament.id, { roundDraft: null });
+  }
+
   const freshTournament = await tournamentsRepo.findById(client, tournament.id);
   return fullView(client, freshTournament, user, { includeAudit: true, includePrivate: true });
 }
 
-async function reverseMatchElo(client, match) {
+function rollbackRoundDraft(round, matches) {
+  return {
+    roundId: round.id,
+    roundNumber: round.roundNumber,
+    mission: round.metadata?.mission || {},
+    matchups: matches
+      .filter((match) => !match.isBye)
+      .map((match) => ({
+        participantAId: match.participantAId || null,
+        participantBId: match.participantBId || null,
+        tableId: match.tableId || null
+      }))
+  };
+}
+
+function assertRoundCanRollback(round, matches) {
+  const startedResult = matches.find((match) =>
+    !match.isBye && (
+      match.status === MATCH_STATUSES.PENDING_CONFIRMATION ||
+      match.status === MATCH_STATUSES.COMPLETED ||
+      match.pendingResult ||
+      match.result ||
+      match.elo
+    )
+  );
+  if (startedResult) {
+    throw new HttpError(409, "A round can be rolled back only before any match result is submitted");
+  }
+  if (!matches.length) throw new HttpError(409, "The latest round has no matches to restore");
+}
+
+function activatedParticipantIdsForRound(round, participants) {
+  const stored = round.metadata?.activatedParticipantIds;
+  if (Array.isArray(stored)) {
+    return stored.map(Number).filter(Number.isSafeInteger);
+  }
+  const roundCreatedAt = Date.parse(round.createdAt || "");
+  if (!Number.isFinite(roundCreatedAt)) return [];
+  return participants
+    .filter((participant) =>
+      participant.status === PARTICIPANT_STATUSES.ACTIVE &&
+      Number.isFinite(Date.parse(participant.placedAt || "")) &&
+      Date.parse(participant.placedAt) >= roundCreatedAt
+    )
+    .map((participant) => participant.id);
+}
+
+async function rollbackLatestRoundAdmin({ client, user, params }) {
+  const tournament = await requireTournament(client, params.id, { forUpdate: true });
+  if (tournament.status !== TOURNAMENT_STATUSES.IN_PROGRESS) {
+    throw new HttpError(409, "Tournament is not in progress");
+  }
+  if (tournament.roundDraft) {
+    throw new HttpError(409, "The latest round has already been rolled back");
+  }
+
+  const rounds = await roundsRepo.listByTournament(client, tournament.id);
+  const approvedRounds = rounds.filter((round) => round.status !== ROUND_STATUSES.NOT_READY);
+  const round = approvedRounds[approvedRounds.length - 1];
+  if (!round) throw new HttpError(409, "There is no approved round to roll back");
+
+  const matches = await matchesRepo.listByRound(client, round.id);
+  assertRoundCanRollback(round, matches);
+  const draft = rollbackRoundDraft(round, matches);
+  await gamesRepo.removeBySourceIds(
+    client,
+    "tournament_match",
+    matches.map((match) => match.id)
+  );
+
+  if (tournament.format === TOURNAMENT_FORMATS.SWISS) {
+    const participants = await participantsRepo.lockByTournament(client, tournament.id);
+    const activatedIds = new Set(activatedParticipantIdsForRound(round, participants));
+    for (const participant of participants) {
+      if (!activatedIds.has(participant.id) || participant.status !== PARTICIPANT_STATUSES.ACTIVE) continue;
+      await participantsRepo.update(client, participant.id, {
+        status: PARTICIPANT_STATUSES.PENDING_PLACEMENT,
+        placedAt: null
+      });
+    }
+    await roundsRepo.remove(client, round.id);
+  } else {
+    await roundsRepo.update(client, round.id, {
+      status: ROUND_STATUSES.NOT_READY,
+      startedAt: null,
+      completedAt: null
+    });
+    for (const match of matches) {
+      await matchesRepo.update(client, match.id, {
+        status: MATCH_STATUSES.NOT_READY,
+        winnerParticipantId: null,
+        pendingResult: null,
+        result: null,
+        matchPoints: null,
+        elo: null,
+        gameId: null,
+        submittedByUserId: null,
+        completedAt: null
+      });
+    }
+  }
+
+  const updatedTournament = await tournamentsRepo.update(client, tournament.id, {
+    roundDraft: draft
+  });
+  await audit(client, updatedTournament, user, "round_rollback", {
+    entityType: "round",
+    entityId: round.id,
+    before: { round, matches },
+    metadata: { roundNumber: round.roundNumber, draft }
+  });
+  return fullView(client, updatedTournament, user, { includeAudit: true, includePrivate: true });
+}
+
+async function reverseMatchElo(client, tournament, match) {
   if (!match.elo) return;
   for (const [playerId, entry] of Object.entries(match.elo)) {
     if (playerId === "k") continue;
     const id = Number(playerId);
     const delta = Number(entry?.delta || 0);
-    if (Number.isInteger(id) && delta) await usersRepo.addRating(client, id, -delta);
+    if (Number.isInteger(id) && delta) {
+      await usersRepo.addRating(client, id, -delta, tournament.venueMode);
+    }
   }
 }
 
@@ -1420,19 +1713,16 @@ async function completeMatch(
   assertCompletableResult(tournament, result, winnerParticipantId);
 
   const finalResult = resultForTournament(tournament, result, user?.id || null);
-  if (replaceCompleted) await reverseMatchElo(client, match);
-  const game = await ensureTournamentGame(client, match, participantA, participantB);
+  if (replaceCompleted) await reverseMatchElo(client, tournament, match);
+  const game = await ensureTournamentGame(client, tournament, match, participantA, participantB);
   const elo = await applyTournamentElo(client, tournament, participantA, participantB, finalResult);
-  let gameId = match.gameId || null;
-  if (game) {
-    const updatedGame = await gamesRepo.saveFinalResult(client, game.id, {
-      result: finalResult,
-      elo,
-      submittedBy: submittedByUserId,
-      newSubmission: !replaceCompleted
-    });
-    gameId = updatedGame.id;
-  }
+  const updatedGame = await gamesRepo.saveFinalResult(client, game.id, {
+    result: finalResult,
+    elo,
+    submittedBy: submittedByUserId,
+    newSubmission: !replaceCompleted
+  });
+  const gameId = updatedGame.id;
 
   const completed = await matchesRepo.update(client, match.id, {
     status: MATCH_STATUSES.COMPLETED,
@@ -1451,11 +1741,8 @@ async function completeMatch(
   } else {
     await syncSwiss(client, tournament, user, completed, participants);
   }
-  if (gameId) {
-    await recalculateCompletedGameRatings(client);
-    return matchesRepo.findById(client, match.id);
-  }
-  return completed;
+  await recalculateCompletedGameRatings(client);
+  return matchesRepo.findById(client, match.id);
 }
 
 async function submitResult({ client, user, params, body }) {
@@ -1472,10 +1759,6 @@ async function submitResult({ client, user, params, body }) {
   const participants = await participantsRepo.lockByTournament(client, tournament.id);
   const { participantA, participantB } = requireMatchParticipants(match, participants);
   assertMatchParticipantUser(match, participantA, participantB, user, "submit the result");
-  if (match.status === MATCH_STATUSES.PENDING_CONFIRMATION && match.pendingResult?.submittedBy !== user.id) {
-    throw new HttpError(409, "This result is waiting for your confirmation");
-  }
-
   const result = calculateSubmittedResult(
     body,
     participantResultKey(participantA),
@@ -1483,26 +1766,24 @@ async function submitResult({ client, user, params, body }) {
   );
   const winnerParticipantId = winnerParticipantIdFromResult(result, participantA, participantB);
   assertCompletableResult(tournament, result, winnerParticipantId);
-  const submittedAt = nowIso();
-  const game = await ensureTournamentGame(client, match, participantA, participantB);
-  if (game) {
-    await gamesRepo.savePendingResult(client, game.id, {
-      submittedBy: user.id,
-      pendingResult: { submittedBy: user.id, submittedAt, result }
-    });
-  }
-  const updated = await matchesRepo.update(client, match.id, {
-    status: MATCH_STATUSES.PENDING_CONFIRMATION,
-    pendingResult: { submittedBy: user.id, submittedAt, result },
-    submittedByUserId: user.id,
-    gameId: game?.id || match.gameId || null
-  });
+  const completed = await completeMatch(
+    client,
+    tournament,
+    match,
+    participants,
+    user,
+    result,
+    user.id
+  );
   await audit(client, tournament, user, "match_result_submit", {
     entityType: "match",
     entityId: match.id,
-    after: updated
+    before: match,
+    after: completed,
+    metadata: { confirmationRequired: false }
   });
-  return fullView(client, tournament, user);
+  const freshTournament = await tournamentsRepo.findById(client, tournament.id);
+  return fullView(client, freshTournament, user);
 }
 
 async function confirmResult({ client, user, params }) {
@@ -1615,10 +1896,12 @@ module.exports = {
   updateParticipant,
   removeParticipant,
   updateSeeds,
+  regenerateSeeds,
   previewAdmin,
   previewNextRoundAdmin,
   startAdmin,
   generateNextRoundAdmin,
+  rollbackLatestRoundAdmin,
   addTableAdmin,
   updateTableAdmin,
   deleteTableAdmin,

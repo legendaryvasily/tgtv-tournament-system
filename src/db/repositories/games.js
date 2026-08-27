@@ -1,4 +1,5 @@
 const { GAME_COLUMNS: COLUMNS, mapGame } = require("../rows");
+const gameParticipantsRepo = require("./game-participants");
 
 // Единственное объявление набора активных статусов. src/api/games.js импортирует его отсюда.
 const ACTIVE_STATUSES = ["open", "pending_confirmation"];
@@ -16,20 +17,25 @@ async function lockById(client, id) {
   return mapGame(rows[0]);
 }
 
-async function listCompleted(client) {
+async function listCompleted(client, venueMode = null) {
+  const venue = ["tts", "irl"].includes(venueMode) ? venueMode : null;
   const { rows } = await client.query(
-    `SELECT ${COLUMNS} FROM games WHERE status = 'completed'
-     ORDER BY COALESCE(submitted_at, created_at) DESC, id DESC`
+    `SELECT ${COLUMNS} FROM games
+     WHERE status = 'completed' AND ($1::text IS NULL OR venue_mode = $1)
+     ORDER BY COALESCE(submitted_at, created_at) DESC, id DESC`,
+    [venue]
   );
   return rows.map(mapGame);
 }
 
-async function listCompletedForUser(client, userId) {
+async function listCompletedForUser(client, userId, venueMode = null) {
+  const venue = ["tts", "irl"].includes(venueMode) ? venueMode : null;
   const { rows } = await client.query(
     `SELECT ${COLUMNS} FROM games
      WHERE status = 'completed' AND $1 = ANY(player_ids)
+       AND ($2::text IS NULL OR venue_mode = $2)
      ORDER BY COALESCE(submitted_at, created_at) DESC, id DESC`,
-    [userId]
+    [userId, venue]
   );
   return rows.map(mapGame);
 }
@@ -56,7 +62,7 @@ async function listForUser(client, userId) {
 async function listActive(client) {
   const { rows } = await client.query(
     `SELECT ${COLUMNS} FROM games
-     WHERE status = ANY($1::text[]) AND source_type = 'challenge'
+     WHERE status = ANY($1::text[])
      ORDER BY COALESCE(submitted_at, created_at) DESC, id DESC`,
     [ACTIVE_STATUSES]
   );
@@ -66,7 +72,7 @@ async function listActive(client) {
 async function listPendingForUser(client, userId) {
   const { rows } = await client.query(
     `SELECT ${COLUMNS} FROM games
-     WHERE status = 'pending_confirmation' AND source_type = 'challenge' AND $1 = ANY(player_ids)
+     WHERE status = 'pending_confirmation' AND $1 = ANY(player_ids)
      ORDER BY COALESCE(submitted_at, created_at) DESC, id DESC`,
     [userId]
   );
@@ -84,13 +90,23 @@ async function findActiveBetween(client, userId, otherUserId) {
   return mapGame(rows[0]);
 }
 
-async function insert(client, { challengeId, playerIds, sourceType = "challenge", sourceId = null }) {
+async function insert(
+  client,
+  { challengeId, playerIds, sourceType = "challenge", sourceId = null, venueMode = "tts", participants = null }
+) {
+  const venue = venueMode === "irl" ? "irl" : "tts";
   const { rows } = await client.query(
-    `INSERT INTO games (challenge_id, player_ids, status, source_type, source_id)
-     VALUES ($1, $2, 'open', $3, $4) RETURNING ${COLUMNS}`,
-    [challengeId || null, playerIds, sourceType, sourceId]
+    `INSERT INTO games (challenge_id, player_ids, status, source_type, source_id, venue_mode)
+     VALUES ($1, $2, 'open', $3, $4, $5) RETURNING ${COLUMNS}`,
+    [challengeId || null, playerIds, sourceType, sourceId, venue]
   );
-  return mapGame(rows[0]);
+  const game = mapGame(rows[0]);
+  if (Array.isArray(participants) && participants.length) {
+    await gameParticipantsRepo.replaceForGame(client, game.id, participants);
+  } else {
+    await gameParticipantsRepo.replaceFromUserIds(client, game.id, playerIds);
+  }
+  return game;
 }
 
 async function savePendingResult(client, id, { submittedBy, pendingResult }) {
@@ -156,6 +172,16 @@ async function cancel(client, id) {
   return mapGame(rows[0]);
 }
 
+async function listByIds(client, ids) {
+  const gameIds = [...new Set(ids)].filter(Number.isInteger);
+  if (!gameIds.length) return [];
+  const { rows } = await client.query(
+    `SELECT ${COLUMNS} FROM games WHERE id = ANY($1::int[]) ORDER BY id`,
+    [gameIds]
+  );
+  return rows.map(mapGame);
+}
+
 async function removeBySourceIds(client, sourceType, sourceIds) {
   const ids = [...new Set(sourceIds)].filter((id) => Number.isInteger(id));
   if (!ids.length) return [];
@@ -171,6 +197,7 @@ async function removeBySourceIds(client, sourceType, sourceIds) {
 module.exports = {
   ACTIVE_STATUSES,
   findById,
+  listByIds,
   lockById,
   listCompleted,
   listCompletedForUser,

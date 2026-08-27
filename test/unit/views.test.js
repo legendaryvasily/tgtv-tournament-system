@@ -43,7 +43,7 @@ test("publicUser отбрасывает переросший аватар", () =
 
 test("leaderboardUser не содержит контактов", () => {
   const row = leaderboardUser(user());
-  assert.deepEqual(Object.keys(row).sort(), ["avatarData", "id", "isAdmin", "name", "rating"]);
+  assert.deepEqual(Object.keys(row).sort(), ["avatarData", "id", "isAdmin", "name", "rating", "ratings"]);
 });
 
 test("publicUserSummary сохраняет контакты для авторизованных представлений", () => {

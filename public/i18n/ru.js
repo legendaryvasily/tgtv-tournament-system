@@ -18,6 +18,7 @@ const TGTV_I18N_RU = {
   "common.requestFailed": "Запрос не выполнен",
   "common.chooseFromList": "Выберите вариант из списка",
   "common.noMatches": "Совпадений нет",
+  "common.notAssigned": "Не назначено",
   "common.themeToggle.toDark": "Переключить на тёмную тему",
   "common.themeToggle.toLight": "Переключить на светлую тему",
 
@@ -62,6 +63,7 @@ const TGTV_I18N_RU = {
   // -- venue ----------------------------------------------------------------
   "venue.tts": "Tabletop Simulator",
   "venue.irl": "Вживую",
+  "venue.tabsAria": "Место проведения игры",
 
   // -- auth -----------------------------------------------------------------
   "auth.brand.logoAlt": "Логотип TGTV",
@@ -82,7 +84,7 @@ const TGTV_I18N_RU = {
   "auth.field.name": "Имя",
   "auth.field.password": "Пароль",
   "auth.field.confirmPassword": "Подтвердите пароль",
-  "auth.field.registerNickname": "Никнейм для регистрации",
+  "auth.field.registerNickname": "Никнейм в Реестре",
   "auth.field.registerNicknamePlaceholder": "Необязательно",
   "auth.field.telegramContact": "Telegram-контакт",
   "auth.field.telegramContactPlaceholder": "@username",
@@ -149,13 +151,20 @@ const TGTV_I18N_RU = {
 
   "games.detail.notFound": "Игра не найдена.",
   "games.detail.title": "Игра №{id}",
+  "games.detail.tournamentTitle": "Детали турнирного матча",
   "games.detail.backToGames": "Назад к играм",
+  "games.detail.metric.tournament": "Турнир",
+  "games.detail.metric.round": "Раунд",
+  "games.detail.metric.match": "Матч",
+  "games.detail.metric.table": "Стол",
   "games.detail.submittedBy": "Отправитель: {name}",
   "games.detail.noResult": "Результат ещё не отправлен.",
   "games.detail.forceConfirm": "Принудительно подтвердить",
   "games.detail.deleteGame": "Удалить игру",
   "games.detail.deletedPlayers": "Удалённые игроки",
   "games.detail.eloChanges": "Изменения Elo",
+  "profile.rating.ttsElo": "TTS Elo",
+  "profile.rating.irlElo": "Вживую Elo",
 
   "games.result.title": "Результат Approved Ops",
   "games.result.editTitle": "Изменить результат Approved Ops",
@@ -170,10 +179,10 @@ const TGTV_I18N_RU = {
   "games.result.tiebreaker.primary": "Основной",
   "games.result.tiebreaker.tacCrit": "Tac Op + Crit Op",
   "games.result.tiebreaker.apl": "APL на столе",
-  "games.result.tiebreaker.rollOff": "Переигровка",
+  "games.result.tiebreaker.rollOff": "Roll-off",
   "games.result.tiebreaker.critTacReason": "Crit Op + Tac Op",
   "games.result.tiebreaker.aplPlayerLabel": "APL на столе: {name}",
-  "games.result.tiebreaker.rollOffWinnerLabel": "Победитель переигровки",
+  "games.result.tiebreaker.rollOffWinnerLabel": "Победитель Roll-off",
   "games.result.tiebreaker.selectIfTied": "Выберите, если ничья",
   "games.result.saveAction": "Сохранить результат",
   "games.result.submitAction": "Отправить результат",
@@ -188,7 +197,7 @@ const TGTV_I18N_RU = {
   "games.result.preview.winsName": "{name} побеждает",
   "games.result.preview.tied": "ничья",
   "games.result.preview.notReached": "Не потребовалось",
-  "games.result.preview.selectRollOffWinner": "Выберите победителя переигровки",
+  "games.result.preview.selectRollOffWinner": "Выберите победителя Roll-off",
 
   "games.review.title": "Подтверждение результата",
   "games.review.submittedBy": "Отправитель: {name}.",
@@ -300,6 +309,7 @@ const TGTV_I18N_RU = {
   "tournaments.card.open": "Открыть",
 
   "tournaments.round.title": "Раунд {number}",
+  "tournaments.round.tabsAria": "Раунды турнира",
   "tournaments.matches.empty": "Матчи пока не сгенерированы.",
   "tournaments.match.bye": "Бай",
   "tournaments.match.byeUpper": "БАЙ",
@@ -347,6 +357,7 @@ const TGTV_I18N_RU = {
   // -- stats ----------------------------------------------------------------
   "stats.title": "Статистика",
   "stats.hint": "Сводные турнирные данные по завершённым играм.",
+  "stats.hintWithVenue": "Сводные данные завершённых турнирных игр — {venue}.",
   "stats.tab.killTeamWinrates": "Винрейт Kill Team",
   "stats.tab.tacOpWinrates": "Винрейт Tac Ops",
   "stats.tab.teams": "Команды",
@@ -508,6 +519,7 @@ const TGTV_I18N_RU = {
   "leaderboard.tab.users": "Администрирование пользователей",
   "leaderboard.title": "Таблица лидеров",
   "leaderboard.hint": "Сортировка по текущему рейтингу Elo.",
+  "leaderboard.hintWithVenue": "Сортировка по текущему рейтингу Elo — {venue}.",
   "leaderboard.empty": "Пока нет пользователей.",
   "leaderboard.pagination.showing": "Показано {first}-{end} из {total} {label}.",
   "leaderboard.pagination.page": "Страница {current} из {total}",
@@ -518,8 +530,9 @@ const TGTV_I18N_RU = {
   "leaderboard.users.pagination.users": { one: "пользователя", few: "пользователя", many: "пользователей", other: "пользователя" },
   "leaderboard.users.column.name": "Имя",
   "leaderboard.users.column.contacts": "Контакты",
+  "leaderboard.users.column.venueRatings": "Рейтинг TTS / Вживую",
   "leaderboard.users.column.admin": "Админ",
-  "leaderboard.users.contact.register": "Регистрация: {value}",
+  "leaderboard.users.contact.register": "Никнейм в Реестре: {value}",
   "leaderboard.users.contact.telegram": "Telegram: {value}",
 
   // -- admin --------------------------------------------------------------
@@ -587,6 +600,7 @@ const TGTV_I18N_RU = {
   "admin.tournament.participants.bulkPlaceholder": "По одному отображаемому имени на строку",
   "admin.tournament.participants.bulkAdd": "Добавить массово",
   "admin.tournament.participants.saveSeeds": "Сохранить порядок посева",
+  "admin.tournament.participants.regenerateSeeds": "Перегенерировать посев",
   "admin.tournament.participants.replace": "Заменить",
   "admin.tournament.participants.linkUser": "Привязать пользователя",
   "admin.tournament.participants.replacePlaceholder": "Заменить зарегистрированным пользователем",
@@ -606,6 +620,7 @@ const TGTV_I18N_RU = {
   "admin.tournament.preview.pendingResult": "Результат ожидается",
   "admin.tournament.rounds.title": "Раунды и матчи",
   "admin.tournament.rounds.hint": "Ввод результата администратором сразу завершает активные матчи турнира.",
+  "admin.tournament.action.rollbackLatestRound": "Отменить текущий раунд",
   "admin.tournament.tiebreaker.priority": "Приоритет {index}",
   "admin.tournament.tiebreaker.none": "Нет",
   "admin.tournament.tiebreaker.heading": "Тайбрейки таблицы",
@@ -635,9 +650,12 @@ const TGTV_I18N_RU = {
   "admin.games.status.open": "открыто",
   "admin.games.empty": "Нет активных игр.",
   "admin.roundSetup.title": "Генерация раунда {number}",
+  "admin.roundSetup.regenerateTitle": "Перегенерация раунда {number}",
   "admin.roundSetup.hint": "Проверьте пары перед сохранением раунда.",
+  "admin.roundSetup.restoredHint": "Предыдущие пары и столы восстановлены. Проверьте их перед сохранением.",
   "admin.roundSetup.addEmpty": "Создать пустую пару",
   "admin.roundSetup.submit": "Сгенерировать раунд",
+  "admin.roundSetup.regenerateSubmit": "Перегенерировать раунд",
   "admin.roundSetup.clear": "Очистить",
   "admin.roundSetup.playerA": "Игрок A",
   "admin.roundSetup.playerB": "Игрок B",
@@ -661,12 +679,17 @@ const TGTV_I18N_RU = {
   "dialog.admin.deleteTournament": "Удалить турнир «{name}»? Связанные игры турнира будут удалены, а рейтинги — пересчитаны.",
   "dialog.admin.deleteTable": "Удалить стол {number}?",
   "dialog.admin.removeParticipant": "Удалить {name}?",
+  "dialog.admin.rollbackLatestRound": "Отменить раунд {number}? Раунд и его активные игры будут удалены, а пары и столы снова откроются как черновик.",
+  "dialog.admin.regenerateSeeds": "Перегенерировать посев в непрерывную последовательность, сохранив текущий порядок?",
   "dialog.admin.participantFallback": "участник",
 
   // -- message ------------------------------------------------------------------
   "message.auth.passwordMismatch": "Пароли не совпадают",
   "message.games.deleted": "Игра удалена.",
-  "message.games.forceConfirmed": "Результат принудительно подтверждён."
+  "message.games.forceConfirmed": "Результат принудительно подтверждён.",
+  "message.games.tournamentMatchSubmitted": "Результат турнирного матча отправлен.",
+  "message.games.resultSubmittedPending": "Результат отправлен и ожидает подтверждения соперника.",
+  "message.games.matchResultSaved": "Результат матча сохранён."
 };
 
 if (typeof module !== "undefined") module.exports = TGTV_I18N_RU;
