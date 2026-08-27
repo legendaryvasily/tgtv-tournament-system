@@ -36,18 +36,24 @@ function scoreFor(match, participant, participantsById) {
   };
 }
 
-function headToHead(a, b, matches) {
-  const match = matches.find(
-    (item) =>
-      item.status === "completed" &&
-      !item.isBye &&
-      ((item.participantAId === a.participant.id && item.participantBId === b.participant.id) ||
-        (item.participantAId === b.participant.id && item.participantBId === a.participant.id))
-  );
-  if (!match || !match.winnerParticipantId) return 0;
-  if (match.winnerParticipantId === a.participant.id) return -1;
-  if (match.winnerParticipantId === b.participant.id) return 1;
-  return 0;
+function assignHeadToHeadWins(rows, matches) {
+  const participantIds = new Set(rows.map((row) => row.participant.id));
+  const wins = new Map(rows.map((row) => [row.participant.id, 0]));
+  for (const match of matches) {
+    if (
+      match.status !== "completed" ||
+      match.isBye ||
+      !participantIds.has(match.participantAId) ||
+      !participantIds.has(match.participantBId) ||
+      !participantIds.has(match.winnerParticipantId)
+    ) {
+      continue;
+    }
+    wins.set(match.winnerParticipantId, wins.get(match.winnerParticipantId) + 1);
+  }
+  for (const row of rows) {
+    row.headToHeadWins = wins.get(row.participant.id) || 0;
+  }
 }
 
 function rankValue(row, key) {
@@ -55,7 +61,36 @@ function rankValue(row, key) {
   if (key === "vp_diff") return row.vpDiff;
   if (key === "strength_of_schedule") return row.strengthOfSchedule;
   if (key === "buchholz") return row.buchholz;
+  if (key === "head_to_head") return row.headToHeadWins;
   return null;
+}
+
+function fallbackStandingOrder(a, b) {
+  return (a.participant.seed || 0) - (b.participant.seed || 0) || a.participant.id - b.participant.id;
+}
+
+function equalValueBuckets(rows, valueFor) {
+  const buckets = [];
+  for (const row of rows) {
+    const value = valueFor(row);
+    const bucket = buckets[buckets.length - 1];
+    if (!bucket || bucket.value !== value) buckets.push({ value, rows: [row] });
+    else bucket.rows.push(row);
+  }
+  return buckets.map((bucket) => bucket.rows);
+}
+
+function sortTiebreakerBucket(rows, matches, tiebreakerOrder, priorityIndex = 0) {
+  if (rows.length <= 1) return rows;
+  if (priorityIndex >= tiebreakerOrder.length) return [...rows].sort(fallbackStandingOrder);
+
+  const key = tiebreakerOrder[priorityIndex];
+  if (key === "head_to_head") assignHeadToHeadWins(rows, matches);
+  const valueFor = (row) => rankValue(row, key);
+  const sorted = [...rows].sort((a, b) => Number(valueFor(b) || 0) - Number(valueFor(a) || 0));
+  return equalValueBuckets(sorted, valueFor).flatMap((bucket) =>
+    sortTiebreakerBucket(bucket, matches, tiebreakerOrder, priorityIndex + 1)
+  );
 }
 
 function trimmedBuchholz(opponentMatchPoints) {
@@ -79,6 +114,7 @@ function buildStandings(participants, matches, tiebreakerOrder = []) {
       byes: 0,
       totalVp: 0,
       vpDiff: 0,
+      headToHeadWins: 0,
       opponents: []
     };
     for (const match of matches) {
@@ -105,27 +141,14 @@ function buildStandings(participants, matches, tiebreakerOrder = []) {
     row.buchholz = trimmedBuchholz(opponentMatchPoints);
   }
 
-  rows.sort((a, b) => {
-    const pointDiff = b.matchPoints - a.matchPoints;
-    if (pointDiff) return pointDiff;
-    for (const key of tiebreakerOrder) {
-      if (key === "strength_of_schedule" && b.strengthOfSchedule !== a.strengthOfSchedule) {
-        return b.strengthOfSchedule - a.strengthOfSchedule;
-      }
-      if (key === "buchholz" && b.buchholz !== a.buchholz) return b.buchholz - a.buchholz;
-      if (key === "total_vp" && b.totalVp !== a.totalVp) return b.totalVp - a.totalVp;
-      if (key === "vp_diff" && b.vpDiff !== a.vpDiff) return b.vpDiff - a.vpDiff;
-      if (key === "head_to_head") {
-        const h2h = headToHead(a, b, matches);
-        if (h2h) return h2h;
-      }
-    }
-    return (a.participant.seed || 0) - (b.participant.seed || 0) || a.participant.id - b.participant.id;
-  });
+  const pointSorted = [...rows].sort((a, b) => b.matchPoints - a.matchPoints);
+  const sortedRows = equalValueBuckets(pointSorted, (row) => row.matchPoints).flatMap((bucket) =>
+    sortTiebreakerBucket(bucket, matches, tiebreakerOrder)
+  );
 
   let lastRank = 0;
   let lastKey = null;
-  return rows.map((row, index) => {
+  return sortedRows.map((row, index) => {
     const key = JSON.stringify([
       row.matchPoints,
       ...tiebreakerOrder.map((item) => rankValue(row, item))

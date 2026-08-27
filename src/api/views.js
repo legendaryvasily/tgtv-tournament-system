@@ -285,6 +285,7 @@ function tournamentDetailView({
       byes: row.byes,
       strengthOfSchedule: row.strengthOfSchedule,
       buchholz: row.buchholz,
+      headToHeadWins: row.headToHeadWins,
       totalVp: row.totalVp,
       vpDiff: row.vpDiff
     })),

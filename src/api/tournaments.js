@@ -291,7 +291,8 @@ function finalResultFromStanding(row, rank) {
     totalVp: row.totalVp,
     vpDiff: row.vpDiff,
     strengthOfSchedule: row.strengthOfSchedule,
-    buchholz: row.buchholz
+    buchholz: row.buchholz,
+    headToHeadWins: row.headToHeadWins
   };
 }
 
