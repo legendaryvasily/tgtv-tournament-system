@@ -2324,7 +2324,7 @@ tr:last-child td {
 .admin-tournament-header-actions > .small-button,
 .admin-tournament-header-actions > .danger-button,
 .admin-tournament-header-actions > .ghost-button {
-  width: 168px;
+  width: fit-content;
   min-height: 38px;
   padding: 2px 10px 0;
   text-align: center;
