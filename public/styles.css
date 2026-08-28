@@ -1772,10 +1772,11 @@ button:disabled {
 
 .panel-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 14px;
+  flex-direction: column;
 }
 
 .panel-header > div:first-child {
