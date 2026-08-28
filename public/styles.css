@@ -5172,3 +5172,35 @@ tr:last-child td {
     padding-right: 92px;
   }
 }
+
+.game-row-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.game-status-row {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.game-button-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 560px) {
+  .game-row-actions {
+    align-items: flex-start;
+  }
+
+  .game-status-row,
+  .game-button-row {
+    justify-content: flex-start;
+  }
+}
