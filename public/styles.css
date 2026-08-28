@@ -4347,22 +4347,6 @@ button:disabled {
   background: var(--panel);
 }
 
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-
-.panel-header > div:first-child {
-  min-width: 0;
-}
-
-.panel-header > .row-actions {
-  flex: 0 0 auto;
-}
-
 .panel h2,
 .panel h3 {
   margin: 0;
