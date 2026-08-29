@@ -398,7 +398,7 @@ button:disabled {
   border-radius: 0 7px 7px 0;
   color: var(--ink);
   background: #0c0c0c;
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .combo-toggle::before {
@@ -566,7 +566,7 @@ button:disabled {
   color: #ffffff;
   background: radial-gradient(circle at 35% 30%, #ffb347, #5c2400 70%);
   font-size: 12px;
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .leaderboard-avatar img {
@@ -678,7 +678,7 @@ button:disabled {
 .app-brand-name {
   color: var(--ink);
   font-size: 14px;
-  font-weight: 950;
+  font-weight: 700;
   line-height: 1.1;
   text-transform: uppercase;
 }
@@ -687,7 +687,7 @@ button:disabled {
   margin-top: 2px;
   color: var(--accent);
   font-size: 11px;
-  font-weight: 950;
+  font-weight: 700;
   line-height: 1.1;
   text-transform: uppercase;
 }
@@ -705,7 +705,7 @@ button:disabled {
     linear-gradient(145deg, rgba(255, 122, 26, 0.78), rgba(12, 12, 12, 0.8)),
     #111111;
   box-shadow: 0 0 24px rgba(255, 122, 26, 0.22);
-  font-weight: 950;
+  font-weight: 700;
   overflow: hidden;
 }
 
@@ -777,7 +777,7 @@ button:disabled {
   border-radius: 7px;
   color: #050505;
   background: var(--accent);
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .inline-rating {
@@ -836,7 +836,7 @@ button:disabled {
   border-bottom: 1px solid var(--line);
   color: var(--ink);
   font-size: 14px;
-  font-weight: 950;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -1259,7 +1259,7 @@ button:disabled {
   box-shadow: 0 0 28px rgba(255, 122, 26, 0.22);
   color: var(--ink);
   font-size: 24px;
-  font-weight: 950;
+  font-weight: 700;
   overflow: hidden;
 }
 
@@ -1279,7 +1279,7 @@ button:disabled {
   margin: 0 0 4px;
   color: var(--accent);
   font-size: 12px;
-  font-weight: 950;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -1351,7 +1351,7 @@ button:disabled {
   color: var(--accent);
   font-size: 42px;
   line-height: 1;
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .profile-rating small {
@@ -1397,7 +1397,7 @@ button:disabled {
 }
 
 .challenge-user-card span {
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .challenge-user-card strong {
@@ -1474,7 +1474,7 @@ button:disabled {
   display: block;
   color: var(--muted);
   font-size: 11px;
-  font-weight: 950;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -1645,7 +1645,7 @@ button:disabled {
   color: #050505;
   background: var(--accent);
   font-size: 18px;
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .team-detail {
@@ -1690,7 +1690,7 @@ button:disabled {
   padding: 0 10px;
   border-radius: 7px;
   font-size: 12px;
-  font-weight: 950;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -2016,7 +2016,7 @@ th {
   color: var(--accent);
   background: transparent;
   font-size: 12px;
-  font-weight: 950;
+  font-weight: 700;
   letter-spacing: 0.04em;
   text-align: left;
   text-transform: uppercase;
@@ -2037,7 +2037,7 @@ tr:last-child td {
 .rank {
   width: 54px;
   color: var(--gold);
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .result-form {
@@ -2162,7 +2162,7 @@ tr:last-child td {
     linear-gradient(90deg, rgba(255, 122, 26, 0.16), transparent 58%),
     #111111;
   font-size: 18px;
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .result-headline {
@@ -2202,7 +2202,7 @@ tr:last-child td {
 .preview-step span {
   color: var(--muted);
   font-size: 12px;
-  font-weight: 950;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -2252,7 +2252,7 @@ tr:last-child td {
   padding-top: 10px;
   border-top: 1px solid var(--line);
   color: var(--ink);
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .admin-controls {
@@ -2863,7 +2863,7 @@ tr:last-child td {
   border-radius: 50%;
   color: var(--ink);
   background: var(--panel-2);
-  font-weight: 950;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -2928,7 +2928,7 @@ tr:last-child td {
 
 .tiebreaker-help-list dt {
   color: var(--accent);
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .tiebreaker-help-list dd {
@@ -3162,7 +3162,7 @@ button:disabled {
   border-radius: 6px;
   color: var(--muted);
   background: transparent;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .tab.active {
@@ -3353,7 +3353,7 @@ button:disabled {
   border-radius: 0 7px 7px 0;
   color: var(--ink);
   background: #0c0c0c;
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .combo-toggle::before {
@@ -3521,7 +3521,7 @@ button:disabled {
   color: #ffffff;
   background: radial-gradient(circle at 35% 30%, #ffb347, #5c2400 70%);
   font-size: 12px;
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .leaderboard-avatar img {
@@ -3606,7 +3606,7 @@ button:disabled {
 .app-brand-name {
   color: var(--ink);
   font-size: 14px;
-  font-weight: 950;
+  font-weight: 700;
   line-height: 1.1;
   text-transform: uppercase;
 }
@@ -3615,7 +3615,7 @@ button:disabled {
   margin-top: 2px;
   color: var(--accent);
   font-size: 11px;
-  font-weight: 950;
+  font-weight: 700;
   line-height: 1.1;
   text-transform: uppercase;
 }
@@ -3633,7 +3633,7 @@ button:disabled {
     linear-gradient(145deg, rgba(255, 122, 26, 0.78), rgba(12, 12, 12, 0.8)),
     #111111;
   box-shadow: 0 0 24px rgba(255, 122, 26, 0.22);
-  font-weight: 950;
+  font-weight: 700;
   overflow: hidden;
 }
 
@@ -3705,7 +3705,7 @@ button:disabled {
   border-radius: 7px;
   color: #050505;
   background: var(--accent);
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .inline-rating {
@@ -3764,7 +3764,7 @@ button:disabled {
   border-bottom: 1px solid var(--line);
   color: var(--ink);
   font-size: 14px;
-  font-weight: 950;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -3834,7 +3834,7 @@ button:disabled {
   box-shadow: 0 0 28px rgba(255, 122, 26, 0.22);
   color: var(--ink);
   font-size: 24px;
-  font-weight: 950;
+  font-weight: 700;
   overflow: hidden;
 }
 
@@ -3854,7 +3854,7 @@ button:disabled {
   margin: 0 0 4px;
   color: var(--accent);
   font-size: 12px;
-  font-weight: 950;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -3926,7 +3926,7 @@ button:disabled {
   color: var(--accent);
   font-size: 42px;
   line-height: 1;
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .profile-rating small {
@@ -3972,7 +3972,7 @@ button:disabled {
 }
 
 .challenge-user-card span {
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .challenge-user-card strong {
@@ -4049,7 +4049,7 @@ button:disabled {
   display: block;
   color: var(--muted);
   font-size: 11px;
-  font-weight: 950;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -4220,7 +4220,7 @@ button:disabled {
   color: #050505;
   background: var(--accent);
   font-size: 18px;
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .team-detail {
@@ -4265,7 +4265,7 @@ button:disabled {
   padding: 0 10px;
   border-radius: 7px;
   font-size: 12px;
-  font-weight: 950;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -4531,7 +4531,7 @@ th {
   color: var(--accent);
   background: transparent;
   font-size: 12px;
-  font-weight: 950;
+  font-weight: 700;
   letter-spacing: 0.04em;
   text-align: left;
   text-transform: uppercase;
@@ -4552,7 +4552,7 @@ tr:last-child td {
 .rank {
   width: 54px;
   color: var(--gold);
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .result-form {
@@ -4677,7 +4677,7 @@ tr:last-child td {
     linear-gradient(90deg, rgba(255, 122, 26, 0.16), transparent 58%),
     #111111;
   font-size: 18px;
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .result-headline {
@@ -4717,7 +4717,7 @@ tr:last-child td {
 .preview-step span {
   color: var(--muted);
   font-size: 12px;
-  font-weight: 950;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -4767,7 +4767,7 @@ tr:last-child td {
   padding-top: 10px;
   border-top: 1px solid var(--line);
   color: var(--ink);
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .admin-controls {
