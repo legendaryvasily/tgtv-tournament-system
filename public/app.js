@@ -2809,6 +2809,7 @@ function wireAdminPendingGameButtons(profileUserId) {
 
 function wireProfileSettings() {
   const avatarInput = document.querySelector("[data-avatar-input]");
+  const avatarFileName = document.querySelector("[data-avatar-file-name]");
   const removeAvatar = document.querySelector("[data-remove-avatar]");
   const nameForm = document.querySelector("[data-profile-name-form]");
   const contactForm = document.querySelector("[data-profile-contact-form]");
@@ -2817,6 +2818,9 @@ function wireProfileSettings() {
   avatarInput?.addEventListener("change", async () => {
     const file = avatarInput.files?.[0];
     if (!file) return;
+    if (avatarFileName) {
+      avatarFileName.textContent = file.name;
+    }
     try {
       setProfileMessage(t("profile.settings.preparingAvatar"));
       const avatarData = await compressAvatar(file);
