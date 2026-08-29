@@ -19,6 +19,8 @@ const state = {
   gamesHistoryFullyLoaded: false,
   gamesHistoryLoadId: 0,
   gamesHistoryLoadingPages: new Set(),
+  gamesHistoryLoaded: false,
+  adminGamesLoaded: false,
   gamesError: "",
   selectedGameId: null,
   tournaments: [],
@@ -1458,8 +1460,16 @@ function wirePageTabs() {
           else await loadTop();
         } else if (section === "games") {
           state.gamesTab = value;
-          if (value === "sessions") await loadAdminGames();
-          else await loadGamesHistory();
+        
+          if (value === "sessions") {
+            if (!state.adminGamesLoaded) {
+              await loadAdminGames();
+            }
+          } else {
+            if (!state.gamesHistoryLoaded) {
+              await loadGamesHistory();
+            }
+          }
         } else if (section === "tournaments") {
           state.tournamentsTab = value;
           if (value === "admin") {
@@ -3007,12 +3017,15 @@ const GAMES_HISTORY_PAGE_SIZE = 10;
 
 async function loadGamesHistory() {
   const loadId = ++state.gamesHistoryLoadId;
+
   state.gamesHistoryLoadingPages.clear();
   state.gamesHistory = [];
   state.gamesHistoryPage = 1;
   state.gamesHistoryTotalPages = 1;
   state.gamesHistoryTotal = 0;
+
   state.gamesHistoryLoading = true;
+  state.gamesHistoryLoaded = false;
   state.gamesHistoryFullyLoaded = false;
 
   try {
@@ -3038,7 +3051,9 @@ async function loadGamesHistory() {
       !data.pagination?.hasMore;
 
     state.gamesError = "";
+
     state.gamesHistoryLoading = false;
+    state.gamesHistoryLoaded = true;
 
     loadRemainingGameHistoryPages(loadId);
 
@@ -3047,6 +3062,7 @@ async function loadGamesHistory() {
 
     state.gamesHistory = [];
     state.gamesHistoryLoading = false;
+    state.gamesHistoryLoaded = false;
     state.gamesHistoryFullyLoaded = true;
     state.gamesError = err.message;
   }
@@ -4820,6 +4836,8 @@ async function adminDeleteGame(gameId, profileUserId = null) {
   if (!confirmed) return;
   try {
     await api(`/api/admin/games/${gameId}`, { method: "DELETE" });
+    state.adminGamesLoaded = false;
+    state.gamesHistoryLoaded = false;
     await refresh();
     if (state.me?.isAdmin) await loadAdminGames();
     await loadGames();
@@ -4845,6 +4863,8 @@ async function adminForceConfirmGame(gameId, profileUserId = null) {
   if (!confirmed) return;
   try {
     await api(`/api/admin/games/${gameId}/confirm-result`, { method: "POST" });
+    state.adminGamesLoaded = false;
+    state.gamesHistoryLoaded = false;
     await refresh();
     if (state.me?.isAdmin) await loadAdminGames();
     
@@ -5001,6 +5021,7 @@ function renderResultForm(gameId, options = {}) {
     try {
       const path = adminEdit ? `/api/admin/games/${game.id}/result` : `/api/games/${game.id}/result`;
       await api(path, { method: "POST", body: approvedOpsPayloadFromForm(game.players) });
+      state.adminGamesLoaded = false;
       if (!adminEdit) {
         window.alert(t(game.sourceType === "tournament_match"
           ? "message.games.tournamentMatchSubmitted"
@@ -5063,6 +5084,8 @@ function renderResultReview(gameId) {
   document.querySelector("[data-confirm-result]").addEventListener("click", async () => {
     try {
       await api(`/api/games/${game.id}/confirm-result`, { method: "POST" });
+      state.adminGamesLoaded = false;
+      state.gamesHistoryLoaded = false;
       await refresh();
       
       invalidateLeaderboardCache();
@@ -5289,6 +5312,8 @@ function renderTournamentResultReview(data, match, options = {}) {
   document.querySelector("[data-tournament-confirm-result]").addEventListener("click", async () => {
     try {
       await api(`/api/tournaments/${tournament.id}/matches/${match.id}/confirm-result`, { method: "POST" });
+      state.adminGamesLoaded = false;
+      state.gamesHistoryLoaded = false;
       await refresh();
       
       invalidateLeaderboardCache();
@@ -6180,8 +6205,14 @@ async function loadAdminUsers() {
 }
 
 async function loadAdminGames() {
-  const data = await api("/api/admin/games");
-  state.adminGames = data.games || [];
+  try {
+    const data = await api("/api/admin/games");
+    state.adminGames = data.games || [];
+    state.adminGamesLoaded = true;
+  } catch (err) {
+    state.adminGamesLoaded = false;
+    throw err;
+  }
 }
 
 async function loadTournamentAdmin() {
