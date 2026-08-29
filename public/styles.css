@@ -530,7 +530,7 @@ button:disabled {
 
 .small-button {
   min-height: 34px;
-  padding: 2px 10px 0;
+  padding: 0 10px;
   color: var(--ink);
   background: var(--panel-2);
   border: 1px solid var(--line-strong);
@@ -3267,9 +3267,12 @@ button:disabled {
 
 .filter-suggestion small,
 .filter-suggestion-empty {
-  color: var(--muted);
+  color: #000000;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
+  background: var(--good);
+  padding: 2px 4px;
+  border-radius: 4px;
 }
 
 .filter-suggestion:hover small {
@@ -3404,21 +3407,6 @@ button:disabled {
   font-size: 13px;
 }
 
-.primary-button,
-.ghost-button,
-.danger-button,
-.small-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  padding: 2px 14px 0;
-  border-radius: 7px;
-  font-weight: 700;
-  line-height: 1;
-  text-align: center;
-}
-
 .primary-button {
   color: #050505;
   background: var(--accent);
@@ -3468,14 +3456,6 @@ button:disabled {
 .danger-button {
   color: #ffffff;
   background: var(--danger);
-}
-
-.small-button {
-  min-height: 34px;
-  padding: 2px 10px 0;
-  color: var(--ink);
-  background: var(--panel-2);
-  border: 1px solid var(--line-strong);
 }
 
 .text-button {
