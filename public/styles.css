@@ -1791,7 +1791,6 @@ button:disabled {
 .panel h3 {
   margin: 0;
   letter-spacing: 0;
-  text-transform: uppercase;
 }
 
 .panel h2 {
@@ -4337,13 +4336,6 @@ button:disabled {
 .panel {
   padding: 18px;
   background: var(--panel);
-}
-
-.panel h2,
-.panel h3 {
-  margin: 0;
-  letter-spacing: 0;
-  text-transform: uppercase;
 }
 
 .panel h2 {
