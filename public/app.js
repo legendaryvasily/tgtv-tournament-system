@@ -3414,6 +3414,7 @@ function wireGameFilters() {
   playerInput?.addEventListener("input", (event) => {
     state.gameFilters.playerQuery = event.target.value;
     state.gameFilters.playerId = "";
+    state.gamesHistoryPage = 1;
     refreshGamesList();
     renderGamePlayerSuggestions();
   });
@@ -3437,6 +3438,7 @@ function wireGameFilters() {
   });
   document.querySelector("[data-games-team-filter]")?.addEventListener("change", (event) => {
     state.gameFilters.team = event.target.value;
+    state.gamesHistoryPage = 1;
     refreshGamesList();
   });
 }
