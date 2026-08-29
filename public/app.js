@@ -58,6 +58,11 @@ const state = {
   feedback: [],
   feedbackError: "",
   feedbackMode: "form",
+  feedbackPage: 1,
+  feedbackTotalPages: 1,
+  feedbackTotal: 0,
+  feedbackLoaded: false,
+  feedbackLoading: false,
   sharedChallengeTokenHandled: ""
 };
 
@@ -66,6 +71,7 @@ let searchRequestId = 0;
 let publicTournamentRequestId = 0;
 
 const LEADERBOARD_PAGE_SIZE = 50;
+const FEEDBACK_PAGE_SIZE = 5;
 const THEME_STORAGE_KEY = "tgtv-theme";
 
 const standingsTiebreakerOptions = [
@@ -2148,14 +2154,48 @@ function resultSummary(game) {
   return t("games.result.withElo", { score, elo: eloParts.join(", ") });
 }
 
-async function loadFeedback() {
+async function loadFeedback({
+  page = 1,
+  force = false
+} = {}) {
   if (!state.me?.isAdmin) return;
+
+  if (
+    !force &&
+    state.feedbackLoaded &&
+    page === state.feedbackPage
+  ) {
+    return;
+  }
+
+  state.feedbackLoading = true;
+
   try {
-    const data = await api("/api/admin/feedback");
-    state.feedback = data.feedback || [];
+    const data = await api(
+      `/api/admin/feedback?page=${page}&limit=${FEEDBACK_PAGE_SIZE}`
+    );
+
+    state.feedback =
+      data.feedback || [];
+
+    state.feedbackPage =
+      data.pagination?.page || page;
+
+    state.feedbackTotalPages =
+      data.pagination?.totalPages || 1;
+
+    state.feedbackTotal =
+      data.pagination?.total ??
+      state.feedback.length;
+
+    state.feedbackLoaded = true;
+    state.feedbackLoading = false;
     state.feedbackError = "";
+
   } catch (err) {
     state.feedback = [];
+    state.feedbackLoading = false;
+    state.feedbackLoaded = false;
     state.feedbackError = err.message;
   }
 }
@@ -2184,13 +2224,22 @@ function renderFeedback() {
 
   document.querySelectorAll("[data-feedback-mode]").forEach((button) => {
     button.addEventListener("click", async () => {
-      state.feedbackMode = button.dataset.feedbackMode;
-      if (state.feedbackMode === "inbox") await loadFeedback();
-      renderFeedback();
+      state.feedbackMode =
+      button.dataset.feedbackMode;
+    
+    if (
+      state.feedbackMode === "inbox" &&
+      !state.feedbackLoaded
+    ) {
+      await loadFeedback({ page: 1 });
+    }
+    
+    renderFeedback();
     });
   });
   document.querySelector("[data-feedback-form]")?.addEventListener("submit", submitFeedback);
   wireFeedbackAdminActions();
+  wireFeedbackPagination();
 }
 
 function feedbackFormMarkup() {
@@ -2207,6 +2256,65 @@ function feedbackFormMarkup() {
       <button class="primary-button" type="submit">${t("feedback.form.submit")}</button>
     </form>
   `;
+}
+
+function feedbackPaginationMarkup() {
+  if (state.feedbackTotalPages <= 1) {
+    return "";
+  }
+
+  return `
+    <button
+      type="button"
+      class="ghost-button"
+      data-feedback-page="${state.feedbackPage - 1}"
+      ${state.feedbackPage <= 1 ? "disabled" : ""}
+    >
+      ←
+    </button>
+
+    <span class="feedback-pagination-label">
+      ${state.feedbackPage} / ${state.feedbackTotalPages}
+    </span>
+
+    <button
+      type="button"
+      class="ghost-button"
+      data-feedback-page="${state.feedbackPage + 1}"
+      ${state.feedbackPage >= state.feedbackTotalPages ? "disabled" : ""}
+    >
+      →
+    </button>
+  `;
+}
+
+function wireFeedbackPagination() {
+  document
+    .querySelectorAll("[data-feedback-page]")
+    .forEach((button) => {
+      button.addEventListener(
+        "click",
+        async () => {
+          const page =
+            Number(button.dataset.feedbackPage);
+
+          if (
+            !Number.isInteger(page) ||
+            page < 1 ||
+            page > state.feedbackTotalPages
+          ) {
+            return;
+          }
+
+          await loadFeedback({
+            page,
+            force: true
+          });
+
+          renderFeedback();
+        }
+      );
+    });
 }
 
 function feedbackInboxMarkup() {
@@ -2232,6 +2340,12 @@ function feedbackInboxMarkup() {
         </div>
       `).join("")}
     </div>
+    <div
+      class="feedback-pagination"
+      data-feedback-pagination
+    >
+      ${feedbackPaginationMarkup()}
+    </div>
   `;
 }
 
@@ -2243,8 +2357,14 @@ function wireFeedbackAdminActions() {
           method: "PATCH",
           body: { status: button.dataset.status }
         });
-        await loadFeedback();
-        renderFeedback();
+        state.feedbackLoaded = false;
+
+        await loadFeedback({
+          page: state.feedbackPage,
+          force: true
+        });
+
+renderFeedback();
       } catch (err) {
         setMessage(err.message, true);
       }
@@ -2255,7 +2375,11 @@ function wireFeedbackAdminActions() {
       if (!window.confirm(t("dialog.feedback.delete"))) return;
       try {
         await api(`/api/admin/feedback/${button.dataset.feedbackDelete}`, { method: "DELETE" });
-        await loadFeedback();
+        state.feedbackLoaded = false;
+        await loadFeedback({
+          page: state.feedbackPage,
+          force: true
+        });
         renderFeedback();
       } catch (err) {
         setMessage(err.message, true);
