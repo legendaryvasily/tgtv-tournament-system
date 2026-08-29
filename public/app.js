@@ -4817,6 +4817,7 @@ async function exitOpenGame(gameId) {
   if (!confirmed) return;
   try {
     await api(`/api/games/${gameId}/exit`, { method: "POST" });
+    state.adminGamesLoaded = false;
     await refresh();
     await loadGames();
     state.view = "play";
@@ -5022,6 +5023,9 @@ function renderResultForm(gameId, options = {}) {
       const path = adminEdit ? `/api/admin/games/${game.id}/result` : `/api/games/${game.id}/result`;
       await api(path, { method: "POST", body: approvedOpsPayloadFromForm(game.players) });
       state.adminGamesLoaded = false;
+      if (adminEdit) {
+        state.gamesHistoryLoaded = false;
+      }
       if (!adminEdit) {
         window.alert(t(game.sourceType === "tournament_match"
           ? "message.games.tournamentMatchSubmitted"
@@ -5100,6 +5104,7 @@ function renderResultReview(gameId) {
   document.querySelector("[data-reject-result]").addEventListener("click", async () => {
     try {
       await api(`/api/games/${game.id}/reject-result`, { method: "POST" });
+      state.adminGamesLoaded = false;
       await refresh();
       await loadGames();
       renderShell();
