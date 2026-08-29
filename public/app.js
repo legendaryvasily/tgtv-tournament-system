@@ -3369,14 +3369,43 @@ function closeGamePlayerSuggestions() {
 }
 
 function refreshGamesList() {
-  const list = document.querySelector("[data-games-list]");
+  const list = document.querySelector(
+    "[data-games-list]"
+  );
+
   if (!list) return;
-  const completedGames = state.gamesHistory.filter((game) => game.status === "completed");
-  const filteredGames = filterGames(completedGames);
-  list.innerHTML = gamesListMarkup(filteredGames);
-  const summary = document.querySelector("[data-games-filter-summary]");
-  if (summary) summary.textContent = gamesFilterSummary(filteredGames.length, completedGames.length);
+
+  const historyPage = getGamesHistoryPage();
+
+  state.gamesHistoryPage = historyPage.page;
+
+  list.innerHTML = gamesListMarkup(
+    historyPage.games
+  );
+
+  const summary = document.querySelector(
+    "[data-games-filter-summary]"
+  );
+
+  if (summary) {
+    summary.textContent = gamesFilterSummary(
+      historyPage.filteredGames.length,
+      state.gamesHistoryTotal ||
+        historyPage.completedGames.length
+    );
+  }
+
+  const pagination = document.querySelector(
+    "[data-games-pagination]"
+  );
+
+  if (pagination) {
+    pagination.innerHTML =
+      gamesPaginationMarkup(historyPage);
+  }
+
   wireGameButtons();
+  wireGamesPagination();
 }
 
 function wireGameFilters() {
