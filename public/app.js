@@ -2369,15 +2369,42 @@ function renderProfile() {
         <div class="settings-block">
           <h3>${t("profile.settings.avatarTitle")}</h3>
           <div class="avatar-settings-row">
-            <div class="profile-avatar compact-avatar" data-avatar-preview>${avatarMarkup(state.me)}</div>
-            <div>
-              <input class="file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-avatar-input>
-              <p class="muted small-note">${t("profile.settings.avatarHint")}</p>
-              <div class="row-actions">
-                <button class="small-button" data-remove-avatar type="button">${t("profile.settings.removeAvatar")}</button>
-              </div>
-            </div>
-          </div>
+  <div class="profile-avatar compact-avatar" data-avatar-preview>
+    ${avatarMarkup(state.me)}
+  </div>
+
+  <div class="avatar-upload-controls">
+    <label class="avatar-file-button" for="profile-avatar-file">
+      ${t("profile.settings.chooseAvatarFile") || "Выберите файл"}
+    </label>
+
+    <input
+      id="profile-avatar-file"
+      class="avatar-file-input"
+      type="file"
+      accept="image/png,image/jpeg,image/webp,image/gif"
+      data-avatar-input
+    >
+
+    <div class="avatar-file-name" data-avatar-file-name>
+      Файл не выбран
+    </div>
+
+    <p class="muted small-note">
+      ${t("profile.settings.avatarHint")}
+    </p>
+
+    <div class="row-actions">
+      <button
+        class="small-button"
+        data-remove-avatar
+        type="button"
+      >
+        ${t("profile.settings.removeAvatar")}
+      </button>
+    </div>
+  </div>
+</div>
         </div>
         <form class="settings-block" data-profile-name-form>
           <h3>${t("profile.settings.nicknameTitle")}</h3>
