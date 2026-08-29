@@ -269,7 +269,7 @@ button:disabled {
 .compact-field label {
   color: var(--muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -472,7 +472,7 @@ button:disabled {
   min-height: 40px;
   padding: 2px 14px 0;
   border-radius: 7px;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
   text-align: center;
 }
@@ -541,7 +541,7 @@ button:disabled {
   padding: 0;
   color: var(--ink);
   background: transparent;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .text-button:hover {
@@ -592,7 +592,7 @@ button:disabled {
 
 .pagination-current {
   color: var(--ink);
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .pagination-actions {
@@ -607,7 +607,7 @@ button:disabled {
   padding: 0;
   color: var(--ink);
   background: transparent;
-  font-weight: 900;
+  font-weight: 700;
   text-align: left;
 }
 
@@ -800,7 +800,7 @@ button:disabled {
   color: var(--muted);
   background: transparent;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.2;
   text-transform: uppercase;
 }
@@ -848,7 +848,7 @@ button:disabled {
   color: var(--ink);
   background: transparent;
   text-align: left;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .nav-button + .nav-button {
@@ -1062,7 +1062,7 @@ button:disabled {
 
 .markdown-content a {
   color: var(--accent);
-  font-weight: 900;
+  font-weight: 700;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -1178,7 +1178,7 @@ button:disabled {
 .tournament-list-heading span {
   color: var(--muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .tournament-card {
@@ -1206,14 +1206,14 @@ button:disabled {
   margin: 0 0 3px;
   color: var(--muted);
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
 .tournament-card-facts dd {
   margin: 0;
   color: var(--ink);
-  font-weight: 900;
+  font-weight: 700;
   overflow-wrap: anywhere;
 }
 
@@ -1356,7 +1356,7 @@ button:disabled {
 
 .profile-rating small {
   color: var(--muted);
-  font-weight: 900;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -1521,7 +1521,7 @@ button:disabled {
 .metric-card span {
   color: var(--muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -1545,7 +1545,7 @@ button:disabled {
 .stats-season-row label {
   color: var(--muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -1556,7 +1556,7 @@ button:disabled {
   border-radius: 7px;
   color: var(--ink);
   background: var(--panel-2);
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .stats-summary {
@@ -1620,7 +1620,7 @@ button:disabled {
   justify-self: start;
   color: var(--muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -1756,7 +1756,7 @@ button:disabled {
   border-radius: 7px;
   color: #050505;
   background: var(--accent);
-  font-weight: 900;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -1921,7 +1921,7 @@ button:disabled {
 
 .row-title {
   color: var(--ink);
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .row-title.text-button {
@@ -2101,7 +2101,7 @@ tr:last-child td {
   border-radius: 7px;
   color: var(--ink);
   background: var(--panel-2);
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .checkbox-line {
@@ -2109,7 +2109,7 @@ tr:last-child td {
   align-items: center;
   gap: 10px;
   color: var(--ink);
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .checkbox-line input {
@@ -2132,7 +2132,7 @@ tr:last-child td {
   padding-left: 20px;
   color: var(--muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -2282,7 +2282,7 @@ tr:last-child td {
   min-height: 16px;
   color: var(--muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .autosave-status[data-status="saving"],
@@ -2476,7 +2476,7 @@ tr:last-child td {
 .tiebreaker-rank-field span {
   color: var(--muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -2505,7 +2505,7 @@ tr:last-child td {
 .tournament-rules-link {
   margin: 8px 0 0;
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .tournament-rules-link a {
@@ -3224,7 +3224,7 @@ button:disabled {
 .compact-field label {
   color: var(--muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -3427,7 +3427,7 @@ button:disabled {
   min-height: 40px;
   padding: 2px 14px 0;
   border-radius: 7px;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
   text-align: center;
 }
@@ -3496,7 +3496,7 @@ button:disabled {
   padding: 0;
   color: var(--ink);
   background: transparent;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .text-button:hover {
@@ -3535,7 +3535,7 @@ button:disabled {
   padding: 0;
   color: var(--ink);
   background: transparent;
-  font-weight: 900;
+  font-weight: 700;
   text-align: left;
 }
 
@@ -3728,7 +3728,7 @@ button:disabled {
   color: var(--muted);
   background: transparent;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.2;
   text-transform: uppercase;
 }
@@ -3776,7 +3776,7 @@ button:disabled {
   color: var(--ink);
   background: transparent;
   text-align: left;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .nav-button + .nav-button {
@@ -3931,7 +3931,7 @@ button:disabled {
 
 .profile-rating small {
   color: var(--muted);
-  font-weight: 900;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -4096,7 +4096,7 @@ button:disabled {
 .metric-card span {
   color: var(--muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -4120,7 +4120,7 @@ button:disabled {
 .stats-season-row label {
   color: var(--muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -4131,7 +4131,7 @@ button:disabled {
   border-radius: 7px;
   color: var(--ink);
   background: var(--panel-2);
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .stats-summary {
@@ -4195,7 +4195,7 @@ button:disabled {
   justify-self: start;
   color: var(--muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -4325,7 +4325,7 @@ button:disabled {
   border-radius: 7px;
   color: #050505;
   background: var(--accent);
-  font-weight: 900;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -4473,7 +4473,7 @@ button:disabled {
 
 .row-title {
   color: var(--ink);
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .row-meta {
@@ -4616,7 +4616,7 @@ tr:last-child td {
   border-radius: 7px;
   color: var(--ink);
   background: var(--panel-2);
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .checkbox-line {
@@ -4624,7 +4624,7 @@ tr:last-child td {
   align-items: center;
   gap: 10px;
   color: var(--ink);
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .checkbox-line input {
@@ -4647,7 +4647,7 @@ tr:last-child td {
   padding-left: 20px;
   color: var(--muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
