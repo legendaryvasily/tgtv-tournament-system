@@ -2386,10 +2386,6 @@ function renderProfile() {
       data-avatar-input
     >
 
-    <div class="avatar-file-name" data-avatar-file-name>
-      Файл не выбран
-    </div>
-
     <p class="muted small-note">
       ${t("profile.settings.avatarHint")}
     </p>
