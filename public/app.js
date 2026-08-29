@@ -3036,13 +3036,6 @@ async function loadGamesHistory() {
     state.gamesError = "";
     state.gamesHistoryLoading = false;
 
-    if (
-      state.view === "games" &&
-      state.gamesTab === "history"
-    ) {
-      renderGames();
-    }
-
     loadRemainingGameHistoryPages(loadId);
 
   } catch (err) {
@@ -3240,6 +3233,7 @@ function wireGamesPagination() {
 
 function renderGames() {
   const content = document.querySelector("[data-content]");
+  if (!content) return;
   const historyPage = getGamesHistoryPage();
   const completedGames = historyPage.completedGames;
   const filteredGames = historyPage.filteredGames;
