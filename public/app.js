@@ -3240,8 +3240,10 @@ function wireGamesPagination() {
 
 function renderGames() {
   const content = document.querySelector("[data-content]");
-  const completedGames = state.gamesHistory((game) => game.status === "completed");
-  const filteredGames = filterGames(completedGames);
+  const historyPage = getGamesHistoryPage();
+  const completedGames = historyPage.completedGames;
+  const filteredGames = historyPage.filteredGames;
+  const pageGames = historyPage.games;
   const activeTab = state.me?.isAdmin ? state.gamesTab : "history";
   if (state.gamesTab !== activeTab) state.gamesTab = activeTab;
   content.innerHTML = `
@@ -3274,7 +3276,8 @@ function renderGames() {
         </div>
       </div>
       <div class="filter-summary" data-games-filter-summary>${gamesFilterSummary(filteredGames.length, completedGames.length)}</div>
-      <div class="list" data-games-list>${gamesListMarkup(filteredGames)}</div>
+      <div class="list" data-games-list>${gamesListMarkup(pageGames)}</div>
+      <div class="games-pagination" data-games-pagination>${gamesPaginationMarkup(historyPage)}</div>
       </section>
     `}
   `;
@@ -3284,6 +3287,7 @@ function renderGames() {
   } else {
     wireGameFilters();
     wireGameButtons();
+    wireGamesPagination();
   }
 }
 
