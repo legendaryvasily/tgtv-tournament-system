@@ -3443,7 +3443,9 @@ function renderGamePlayerSuggestions() {
   const box = document.querySelector("[data-games-player-suggestions]");
   const input = document.querySelector("[data-games-player-filter]");
   if (!box || !input) return;
-  const completedGames = state.allGames.filter((game) => game.status === "completed");
+  const completedGames = state.gamesHistory.filter(
+    (game) => game.status === "completed"
+  );
   const options = gamePlayerSuggestionOptions(completedGames, input.value);
   box.innerHTML = options.length
     ? options.map((player) => `
@@ -3540,6 +3542,7 @@ function chooseGamePlayerSuggestion(button) {
   const input = document.querySelector("[data-games-player-filter]");
   state.gameFilters.playerId = button.dataset.gamesPlayerSuggestion;
   state.gameFilters.playerQuery = button.dataset.gamesPlayerName || "";
+  state.gamesHistoryPage = 1;
   if (input) input.value = state.gameFilters.playerQuery;
   closeGamePlayerSuggestions();
   refreshGamesList();
