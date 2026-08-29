@@ -5161,3 +5161,23 @@ table tbody tr:nth-child(even) {
 table tbody tr:nth-child(odd) {
   background: transparent;
 }
+
+.feedback-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.feedback-pagination-label {
+  min-width: 60px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.feedback-pagination button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
