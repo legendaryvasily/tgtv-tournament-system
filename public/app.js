@@ -3162,6 +3162,82 @@ async function openGameDetail(gameId) {
   renderShell();
 }
 
+function getGamesHistoryPage() {
+  const completedGames = state.gamesHistory.filter(
+    (game) => game.status === "completed"
+  );
+
+  const filteredGames = filterGames(completedGames);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredGames.length / GAMES_HISTORY_PAGE_SIZE)
+  );
+
+  const page = Math.min(
+    Math.max(1, state.gamesHistoryPage),
+    totalPages
+  );
+
+  const start = (page - 1) * GAMES_HISTORY_PAGE_SIZE;
+
+  return {
+    games: filteredGames.slice(
+      start,
+      start + GAMES_HISTORY_PAGE_SIZE
+    ),
+    filteredGames,
+    completedGames,
+    page,
+    totalPages
+  };
+}
+
+function gamesPaginationMarkup({ page, totalPages }) {
+  if (totalPages <= 1) return "";
+
+  return `
+    <button
+      type="button"
+      class="ghost-button"
+      data-games-page="${page - 1}"
+      ${page <= 1 ? "disabled" : ""}
+    >
+      ←
+    </button>
+
+    <span class="games-pagination-label">
+      ${page} / ${totalPages}
+    </span>
+
+    <button
+      type="button"
+      class="ghost-button"
+      data-games-page="${page + 1}"
+      ${page >= totalPages ? "disabled" : ""}
+    >
+      →
+    </button>
+  `;
+}
+
+function wireGamesPagination() {
+  document
+    .querySelectorAll("[data-games-page]")
+    .forEach((button) => {
+      button.addEventListener("click", () => {
+        const page = Number(button.dataset.gamesPage);
+
+        if (!Number.isInteger(page) || page < 1) {
+          return;
+        }
+
+        state.gamesHistoryPage = page;
+        refreshGamesList();
+      });
+    });
+}
+
 function renderGames() {
   const content = document.querySelector("[data-content]");
   const completedGames = state.gamesHistory((game) => game.status === "completed");
