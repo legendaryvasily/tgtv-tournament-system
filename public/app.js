@@ -6,6 +6,10 @@ const state = {
   view: "play",
   authMode: "login",
   users: [],
+  leaderboardUsers: {
+    tts: null,
+    irl: null
+  },
   allGames: [],
   gamesHistory: [],
   gamesHistoryPage: 1,
@@ -4841,7 +4845,10 @@ async function adminForceConfirmGame(gameId, profileUserId = null) {
     await api(`/api/admin/games/${gameId}/confirm-result`, { method: "POST" });
     await refresh();
     if (state.me?.isAdmin) await loadAdminGames();
+    
+    invalidateLeaderboardCache();
     await loadTop();
+    
     await loadGames();
     if (profileUserId) {
       await loadPlayerProfile(profileUserId);
@@ -5055,7 +5062,10 @@ function renderResultReview(gameId) {
     try {
       await api(`/api/games/${game.id}/confirm-result`, { method: "POST" });
       await refresh();
+      
+      invalidateLeaderboardCache();
       await loadTop();
+      
       await loadGames();
       renderShell();
     } catch (err) {
@@ -5278,7 +5288,10 @@ function renderTournamentResultReview(data, match, options = {}) {
     try {
       await api(`/api/tournaments/${tournament.id}/matches/${match.id}/confirm-result`, { method: "POST" });
       await refresh();
+      
+      invalidateLeaderboardCache();
       await loadTop();
+      
       await loadGames();
       await returnFromTournamentResult(tournament, publicRoute, returnTo);
     } catch (err) {
@@ -6001,8 +6014,26 @@ function updateTotals() {
 }
 
 async function loadTop() {
-  const data = await api(`/api/users?venue=${encodeURIComponent(state.leaderboardVenue)}`);
-  state.users = data.users || [];
+  const venue = state.leaderboardVenue;
+
+  if (Array.isArray(state.leaderboardUsers[venue])) {
+    state.users = state.leaderboardUsers[venue];
+    return;
+  }
+
+  const data = await api(
+    `/api/users?venue=${encodeURIComponent(venue)}`
+  );
+
+  const users = data.users || [];
+
+  state.leaderboardUsers[venue] = users;
+  state.users = users;
+}
+
+function invalidateLeaderboardCache() {
+  state.leaderboardUsers.tts = null;
+  state.leaderboardUsers.irl = null;
 }
 
 function paginate(items, page, pageSize = LEADERBOARD_PAGE_SIZE) {
@@ -7182,7 +7213,10 @@ function wireAdminUserControls() {
         await api(`/api/admin/users/${button.dataset.deleteUser}`, { method: "DELETE" });
         await refresh();
         await loadAdminUsers();
+        
+        invalidateLeaderboardCache();
         await loadTop();
+        
         renderShell();
       } catch (err) {
         setMessage(err.message, true);
@@ -8239,7 +8273,10 @@ async function adminPatch(id, body) {
     await api(`/api/admin/users/${id}`, { method: "PATCH", body });
     await refresh();
     await loadAdminUsers();
+
+    invalidateLeaderboardCache();
     await loadTop();
+
     renderShell();
   } catch (err) {
     setMessage(err.message, true);
