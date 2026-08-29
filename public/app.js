@@ -652,7 +652,7 @@ async function applyAppRoute(route) {
   } else if (route.view === "games") {
     state.gamesTab = state.me?.isAdmin ? route.gamesTab || "history" : "history";
     if (state.gamesTab === "sessions") await loadAdminGames();
-    else await loadGames();
+    else await loadGamesHistory();
   } else if (route.view === "gameDetail") {
     state.selectedGameId = normalizedGameDetailId(route.selectedGameId);
     await loadGames();
@@ -1455,7 +1455,7 @@ function wirePageTabs() {
         } else if (section === "games") {
           state.gamesTab = value;
           if (value === "sessions") await loadAdminGames();
-          else await loadGames();
+          else await loadGamesHistory();
         } else if (section === "tournaments") {
           state.tournamentsTab = value;
           if (value === "admin") {
@@ -1855,7 +1855,7 @@ function renderShell() {
       syncAppHash();
       renderShell();
       try {
-        if (targetView === "games") await loadGames();
+        if (targetView === "games") await loadGamesHistory();
         if (targetView === "tournaments") await loadTournaments();
         if (targetView === "statistics") await loadGames();
         if (targetView === "profile") await loadChallengeProgress(state.me.id);
@@ -3164,7 +3164,7 @@ async function openGameDetail(gameId) {
 
 function renderGames() {
   const content = document.querySelector("[data-content]");
-  const completedGames = state.allGames.filter((game) => game.status === "completed");
+  const completedGames = state.gamesHistory((game) => game.status === "completed");
   const filteredGames = filterGames(completedGames);
   const activeTab = state.me?.isAdmin ? state.gamesTab : "history";
   if (state.gamesTab !== activeTab) state.gamesTab = activeTab;
