@@ -3291,7 +3291,7 @@ function closeGamePlayerSuggestions() {
 function refreshGamesList() {
   const list = document.querySelector("[data-games-list]");
   if (!list) return;
-  const completedGames = state.allGames.filter((game) => game.status === "completed");
+  const completedGames = state.gamesHistory.filter((game) => game.status === "completed");
   const filteredGames = filterGames(completedGames);
   list.innerHTML = gamesListMarkup(filteredGames);
   const summary = document.querySelector("[data-games-filter-summary]");
