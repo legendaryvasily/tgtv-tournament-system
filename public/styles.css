@@ -5191,7 +5191,7 @@ tr:last-child td {
   overflow-wrap: anywhere;
 }
 
-.field compact-field select {
+.field.compact-field select {
   appearance: none;
   -webkit-appearance: none;
 
