@@ -5170,3 +5170,23 @@ tr:last-child td {
     justify-content: flex-start;
   }
 }
+
+.games-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.games-pagination-label {
+  min-width: 60px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.games-pagination button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
