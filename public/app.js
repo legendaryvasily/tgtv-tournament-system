@@ -7,6 +7,13 @@ const state = {
   authMode: "login",
   users: [],
   allGames: [],
+  gamesHistory: [],
+  gamesHistoryPage: 1,
+  gamesHistoryTotalPages: 1,
+  gamesHistoryTotal: 0,
+  gamesHistoryLoading: false,
+  gamesHistoryFullyLoaded: false,
+  gamesHistoryLoadId: 0,
   gamesError: "",
   selectedGameId: null,
   tournaments: [],
@@ -2989,6 +2996,132 @@ async function loadGames() {
   } catch (err) {
     state.allGames = [];
     state.gamesError = err.message;
+  }
+}
+
+const GAMES_HISTORY_PAGE_SIZE = 10;
+
+async function loadGamesHistory() {
+  const loadId = ++state.gamesHistoryLoadId;
+
+  state.gamesHistory = [];
+  state.gamesHistoryPage = 1;
+  state.gamesHistoryTotalPages = 1;
+  state.gamesHistoryTotal = 0;
+  state.gamesHistoryLoading = true;
+  state.gamesHistoryFullyLoaded = false;
+
+  try {
+    const data = await api(
+      `/api/games?page=1&limit=${GAMES_HISTORY_PAGE_SIZE}`
+    );
+
+    if (loadId !== state.gamesHistoryLoadId) return;
+
+    state.gamesHistory = data.games || [];
+
+    state.gamesHistoryPage =
+      data.pagination?.page || 1;
+
+    state.gamesHistoryTotalPages =
+      data.pagination?.totalPages || 1;
+
+    state.gamesHistoryTotal =
+      data.pagination?.total ??
+      state.gamesHistory.length;
+
+    state.gamesHistoryFullyLoaded =
+      !data.pagination?.hasMore;
+
+    state.gamesError = "";
+    state.gamesHistoryLoading = false;
+
+    if (
+      state.view === "games" &&
+      state.gamesTab === "history"
+    ) {
+      renderGames();
+    }
+
+    loadRemainingGameHistoryPages(loadId);
+
+  } catch (err) {
+    if (loadId !== state.gamesHistoryLoadId) return;
+
+    state.gamesHistory = [];
+    state.gamesHistoryLoading = false;
+    state.gamesHistoryFullyLoaded = true;
+    state.gamesError = err.message;
+  }
+}
+
+async function loadRemainingGameHistoryPages(loadId) {
+  let nextPage = 2;
+
+  while (
+    loadId === state.gamesHistoryLoadId &&
+    nextPage <= state.gamesHistoryTotalPages
+  ) {
+    try {
+      const data = await api(
+        `/api/games?page=${nextPage}&limit=${GAMES_HISTORY_PAGE_SIZE}`
+      );
+
+      if (loadId !== state.gamesHistoryLoadId) return;
+
+      const existingIds = new Set(
+        state.gamesHistory.map((game) => String(game.id))
+      );
+
+      for (const game of data.games || []) {
+        if (!existingIds.has(String(game.id))) {
+          state.gamesHistory.push(game);
+          existingIds.add(String(game.id));
+        }
+      }
+
+      state.gamesHistoryTotal =
+        data.pagination?.total ??
+        state.gamesHistoryTotal;
+
+      state.gamesHistoryTotalPages =
+        data.pagination?.totalPages ??
+        state.gamesHistoryTotalPages;
+
+      nextPage += 1;
+
+      if (
+        state.view === "games" &&
+        state.gamesTab === "history" &&
+        (
+          state.gameFilters.playerQuery ||
+          state.gameFilters.playerId ||
+          state.gameFilters.team
+        )
+      ) {
+        refreshGamesList();
+      }
+
+    } catch (err) {
+      console.error(
+        "Failed to preload games history page",
+        nextPage,
+        err
+      );
+
+      break;
+    }
+  }
+
+  if (loadId !== state.gamesHistoryLoadId) return;
+
+  state.gamesHistoryFullyLoaded = true;
+
+  if (
+    state.view === "games" &&
+    state.gamesTab === "history"
+  ) {
+    refreshGamesList();
   }
 }
 
