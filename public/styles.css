@@ -3183,18 +3183,6 @@ button:disabled {
   text-transform: uppercase;
 }
 
-.field input,
-.field select,
-.field textarea {
-  width: 100%;
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--line-strong);
-  border-radius: 7px;
-  color: var(--ink);
-  background: #0c0c0c;
-}
-
 .field textarea {
   min-height: 132px;
   padding-top: 12px;
@@ -5203,7 +5191,7 @@ tr:last-child td {
   overflow-wrap: anywhere;
 }
 
-select {
+.field compact-field select {
   appearance: none;
   -webkit-appearance: none;
 
