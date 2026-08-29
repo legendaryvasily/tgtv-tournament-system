@@ -527,7 +527,6 @@ async function refresh() {
 async function boot() {
   try {
     await refresh();
-    await loadTop();
     if (state.me) await applyAppRouteFromHash();
     render();
   } catch (err) {
