@@ -14,6 +14,7 @@ const state = {
   gamesHistoryLoading: false,
   gamesHistoryFullyLoaded: false,
   gamesHistoryLoadId: 0,
+  gamesHistoryLoadingPages: new Set(),
   gamesError: "",
   selectedGameId: null,
   tournaments: [],
@@ -3003,7 +3004,7 @@ const GAMES_HISTORY_PAGE_SIZE = 10;
 
 async function loadGamesHistory() {
   const loadId = ++state.gamesHistoryLoadId;
-
+  state.gamesHistoryLoadingPages.clear();
   state.gamesHistory = [];
   state.gamesHistoryPage = 1;
   state.gamesHistoryTotalPages = 1;
@@ -3048,6 +3049,52 @@ async function loadGamesHistory() {
   }
 }
 
+async function loadGamesHistoryPage(page, loadId) {
+  if (
+    state.gamesHistoryLoadingPages.has(page) ||
+    loadId !== state.gamesHistoryLoadId
+  ) {
+    return;
+  }
+
+  state.gamesHistoryLoadingPages.add(page);
+
+  try {
+    const data = await api(
+      `/api/games?page=${page}&limit=${GAMES_HISTORY_PAGE_SIZE}`
+    );
+
+    if (loadId !== state.gamesHistoryLoadId) {
+      return;
+    }
+
+    const existingIds = new Set(
+      state.gamesHistory.map((game) => String(game.id))
+    );
+
+    for (const game of data.games || []) {
+      if (!existingIds.has(String(game.id))) {
+        state.gamesHistory.push(game);
+        existingIds.add(String(game.id));
+      }
+    }
+
+    state.gamesHistoryTotal =
+      data.pagination?.total ??
+      state.gamesHistoryTotal;
+
+    state.gamesHistoryTotalPages =
+      data.pagination?.totalPages ??
+      state.gamesHistoryTotalPages;
+
+    state.gamesHistoryFullyLoaded =
+      !data.pagination?.hasMore;
+
+  } finally {
+    state.gamesHistoryLoadingPages.delete(page);
+  }
+}
+
 async function loadRemainingGameHistoryPages(loadId) {
   let nextPage = 2;
 
@@ -3056,30 +3103,10 @@ async function loadRemainingGameHistoryPages(loadId) {
     nextPage <= state.gamesHistoryTotalPages
   ) {
     try {
-      const data = await api(
-        `/api/games?page=${nextPage}&limit=${GAMES_HISTORY_PAGE_SIZE}`
+      await loadGamesHistoryPage(
+        nextPage,
+        loadId
       );
-
-      if (loadId !== state.gamesHistoryLoadId) return;
-
-      const existingIds = new Set(
-        state.gamesHistory.map((game) => String(game.id))
-      );
-
-      for (const game of data.games || []) {
-        if (!existingIds.has(String(game.id))) {
-          state.gamesHistory.push(game);
-          existingIds.add(String(game.id));
-        }
-      }
-
-      state.gamesHistoryTotal =
-        data.pagination?.total ??
-        state.gamesHistoryTotal;
-
-      state.gamesHistoryTotalPages =
-        data.pagination?.totalPages ??
-        state.gamesHistoryTotalPages;
 
       nextPage += 1;
 
@@ -3106,7 +3133,9 @@ async function loadRemainingGameHistoryPages(loadId) {
     }
   }
 
-  if (loadId !== state.gamesHistoryLoadId) return;
+  if (loadId !== state.gamesHistoryLoadId) {
+    return;
+  }
 
   state.gamesHistoryFullyLoaded = true;
 
@@ -3162,10 +3191,20 @@ function getGamesHistoryPage() {
 
   const filteredGames = filterGames(completedGames);
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredGames.length / GAMES_HISTORY_PAGE_SIZE)
-  );
+  const hasFilters =
+  Boolean(state.gameFilters.playerQuery) ||
+  Boolean(state.gameFilters.playerId) ||
+  Boolean(state.gameFilters.team);
+
+  const totalPages = hasFilters
+    ? Math.max(
+        1,
+        Math.ceil(filteredGames.length / GAMES_HISTORY_PAGE_SIZE)
+      )
+    : Math.max(
+        1,
+        state.gamesHistoryTotalPages
+      );
 
   const page = Math.min(
     Math.max(1, state.gamesHistoryPage),
@@ -3218,17 +3257,74 @@ function wireGamesPagination() {
   document
     .querySelectorAll("[data-games-page]")
     .forEach((button) => {
-      button.addEventListener("click", () => {
+      button.addEventListener("click", async () => {
         const page = Number(button.dataset.gamesPage);
 
-        if (!Number.isInteger(page) || page < 1) {
+        if (
+          !Number.isInteger(page) ||
+          page < 1 ||
+          page > state.gamesHistoryTotalPages
+        ) {
           return;
+        }
+
+        const requiredGamesCount =
+          page * GAMES_HISTORY_PAGE_SIZE;
+
+        const pageAlreadyLoaded =
+          state.gamesHistory.length >= requiredGamesCount ||
+          state.gamesHistoryFullyLoaded;
+
+        if (!pageAlreadyLoaded) {
+          button.disabled = true;
+
+          try {
+            await ensureGamesHistoryPageLoaded(page);
+          } finally {
+            button.disabled = false;
+          }
         }
 
         state.gamesHistoryPage = page;
         refreshGamesList();
       });
     });
+}
+
+async function ensureGamesHistoryPageLoaded(targetPage) {
+  if (targetPage <= 1) return;
+
+  const loadId = state.gamesHistoryLoadId;
+
+  while (
+    loadId === state.gamesHistoryLoadId &&
+    Math.ceil(
+      state.gamesHistory.length /
+        GAMES_HISTORY_PAGE_SIZE
+    ) < targetPage &&
+    !state.gamesHistoryFullyLoaded
+  ) {
+    const nextPage =
+      Math.floor(
+        state.gamesHistory.length /
+          GAMES_HISTORY_PAGE_SIZE
+      ) + 1;
+
+    await loadGamesHistoryPage(
+      nextPage,
+      loadId
+    );
+
+    // Если эта страница уже грузилась фоном,
+    // даём ей закончить и пересчитываем состояние.
+    if (
+      state.gamesHistoryLoadingPages.has(nextPage)
+    ) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, 20)
+      );
+    }
+  }
 }
 
 function renderGames() {
