@@ -965,7 +965,7 @@ button:disabled {
 }
 
 .tournament-stats-grid {
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr !important;
   align-items: start;
   width: 100%;
 }
@@ -1434,7 +1434,7 @@ button:disabled {
 }
 
 .challenge-team-card {
-  display: grid;
+  display: flex;
   grid-template-columns: minmax(0, 1fr) 82px;
   align-items: center;
   gap: 10px;
@@ -1443,6 +1443,7 @@ button:disabled {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel-2);
+  justify-content: space-between;
 }
 
 .challenge-team-card.completed {
@@ -1484,7 +1485,7 @@ button:disabled {
 .challenge-team-card span {
   display: block;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -1960,13 +1961,13 @@ button:disabled {
 .status {
   display: inline-grid;
   place-items: center;
-  padding: 2px 9px;
-  border-radius: 7px;
+  padding: 4px 9px;
+  border-radius: 12px;
   background: var(--panel-3);
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 700;
-  line-height: 8px;
+  line-height: 12px;
   text-align: center;
   text-transform: uppercase;
   white-space: nowrap;
@@ -3954,24 +3955,12 @@ button:disabled {
 
 .challenge-track {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
 .challenge-subheader {
   margin-top: 18px;
-}
-
-.challenge-team-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 82px;
-  align-items: center;
-  gap: 10px;
-  min-height: 140px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel-2);
 }
 
 .challenge-team-card.completed {
