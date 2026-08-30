@@ -965,7 +965,18 @@ button:disabled {
 }
 
 .tournament-stats-grid {
+  grid-template-columns: 1fr;
   align-items: start;
+  width: 100%;
+}
+
+.tournament-stats-grid .tournament-stat-table {
+  width: 100%;
+  min-width: 0;
+}
+
+.tournament-stats-grid table {
+  width: 100%;
 }
 
 .tournament-stat-table h4 {
